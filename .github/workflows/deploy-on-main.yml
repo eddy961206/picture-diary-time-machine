@@ -1,0 +1,19 @@
+name: Deploy to Vercel on main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  vercel-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID || 'team_LRj6PPUVDzlPkNp6ecEfKYAG' }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID || 'prj_jpvfkeAuRCJAwsAxNkzGoKRT6WE4' }}
+          vercel-args: "--prod --yes"
