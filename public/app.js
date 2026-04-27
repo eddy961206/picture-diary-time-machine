@@ -67,6 +67,22 @@ function formData() {
   return data;
 }
 
+function validateRequiredInputs() {
+  const requiredNames = ["title", "place", "diary", "detail"];
+  const missing = requiredNames
+    .map((name) => form.elements[name])
+    .find((field) => !String(field.value || "").trim());
+
+  if (!missing) return true;
+  missing.reportValidity();
+  setLog("제목, 장소/상황, 일기 몇 줄, 디테일은 꼭 넣어줘.", "error");
+  return false;
+}
+
+function hasRequiredPromptData(data) {
+  return ["title", "place", "diary", "detail"].every((key) => String(data[key] || "").trim());
+}
+
 function setLog(message, tone = "normal") {
   log.textContent = message || "";
   log.dataset.tone = tone;
@@ -118,6 +134,12 @@ async function shareImageThroughInstalledApps() {
 
 async function refreshPrompt() {
   const data = formData();
+  if (!hasRequiredPromptData(data)) {
+    lastPrompt = "";
+    promptPreview.textContent = "제목, 장소/상황, 일기 몇 줄, 디테일을 모두 입력하면 프롬프트가 만들어져.";
+    return;
+  }
+
   try {
     const res = await fetch("/api/prompt", {
       method: "POST",
@@ -183,6 +205,7 @@ form.addEventListener("input", () => {
 });
 
 promptOnly.addEventListener("click", async () => {
+  if (!validateRequiredInputs()) return;
   await refreshPrompt();
   setLog("프롬프트만 만들었어. 이걸 그대로 다른 이미지 생성기에 넣어도 돼.");
 });
@@ -219,6 +242,7 @@ socialShareButtons.forEach((button) => {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!validateRequiredInputs()) return;
   await refreshPrompt();
 
   loading.classList.remove("hidden");

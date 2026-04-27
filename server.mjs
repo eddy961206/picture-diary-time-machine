@@ -94,6 +94,22 @@ function cleanMultiline(value, fallback = "") {
     .slice(0, 3000) || fallback;
 }
 
+function validateRequiredInput(input) {
+  const required = [
+    ["title", "제목"],
+    ["place", "장소/상황"],
+    ["diary", "일기 몇 줄"],
+    ["detail", "더 넣고 싶은 디테일"],
+  ];
+  const missing = required
+    .filter(([key]) => !String(input[key] || "").trim())
+    .map(([, label]) => label);
+
+  if (missing.length) {
+    throw new Error(`${missing.join(", ")}을 꼭 입력해줘.`);
+  }
+}
+
 function normalizeSize(value) {
   const allowed = new Set(["1024x1024", "1024x1536", "1536x1024", "auto"]);
   return allowed.has(value) ? value : "1024x1536";
@@ -122,6 +138,8 @@ function parseDataUrl(dataUrl) {
 }
 
 function buildDiaryPrompt(input) {
+  validateRequiredInput(input);
+
   const date = clean(input.date, "2011년 8월 어느 날");
   const weather = clean(input.weather, "맑음");
   const title = clean(input.title, "즐거운 하루");
@@ -251,6 +269,7 @@ async function handleGenerate(req, res) {
     }
 
     const input = await readJson(req);
+    validateRequiredInput(input);
     const size = normalizeSize(input.size);
     const quality = normalizeQuality(input.quality);
     const outputFormat = normalizeFormat(input.outputFormat);
