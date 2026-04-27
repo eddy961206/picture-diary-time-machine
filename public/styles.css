@@ -12,7 +12,7 @@
 
 * { box-sizing: border-box; }
 
-html, body { margin: 0; min-height: 100%; }
+html, body { margin: 0; min-height: 100%; overflow-x: hidden; }
 
 body {
   font-family: ui-rounded, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
@@ -313,6 +313,7 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 }
 
 .share-button {
+  flex: 1 1 112px;
   padding: 8px 11px;
   border-radius: 999px;
   border: 1px solid rgba(97,72,41,.16);
@@ -420,14 +421,36 @@ button:disabled { opacity: .55; cursor: not-allowed; transform: none; }
 
 @media (max-width: 930px) {
   .hero, .workspace { grid-template-columns: 1fr; }
+  .hero { gap: 24px; }
   .hero__sample img { margin: 0 auto; }
   .result { position: static; }
 }
 
 @media (max-width: 640px) {
-  .shell { width: min(100% - 20px, 1180px); margin-top: 10px; }
-  .hero, .panel { padding: 18px; border-radius: 20px; }
+  .shell { width: min(100% - 18px, 1180px); margin: 9px auto 28px; }
+  .paper-card { border-radius: 20px; }
+  .hero, .panel { padding: 16px; }
+  .hero__sample { transform: none; }
+  .hero__sample img { border-width: 6px; border-radius: 10px; }
+  .tape { display: none; }
+  .caption { right: 10px; bottom: 10px; }
   .grid.two { grid-template-columns: 1fr; }
+  .eyebrow { font-size: 12px; line-height: 1.4; }
+  h1 { font-size: 54px; letter-spacing: -0.04em; }
   .lead { font-size: 17px; }
-  .result-stage { min-height: 320px; }
+  .actions, .result-actions { display: grid; grid-template-columns: 1fr; }
+  button, .download { width: 100%; text-align: center; }
+  .share-panel { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 10px; }
+  .share-button { min-width: 0; padding: 10px 6px; font-size: 11px; }
+  .result-stage { min-height: 320px; padding: 12px; border-radius: 18px; }
+  .prompt-box pre { max-height: 220px; word-break: break-word; }
+}
+
+@media (max-width: 380px) {
+  h1 { font-size: 48px; }
+  .lead { font-size: 16px; line-height: 1.55; }
+  .section-title h2 { font-size: 21px; }
+  input, textarea, select { padding: 12px; }
+  .share-panel { grid-template-columns: 1fr; }
+  .share-button { font-size: 12px; }
 }

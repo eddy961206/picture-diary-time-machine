@@ -24,7 +24,7 @@ test("getSharePageUrl strips hash and query from the current page", () => {
   assert.equal(getSharePageUrl(location), "https://example.com/diary");
 });
 
-test("buildSocialShareUrl creates encoded SNS links", () => {
+test("buildSocialShareUrl creates encoded SNS links for X and Threads", () => {
   const text = "그림일기 타임머신";
   const url = "https://example.com/diary";
 
@@ -33,12 +33,15 @@ test("buildSocialShareUrl creates encoded SNS links", () => {
     "https://twitter.com/intent/tweet?text=%EA%B7%B8%EB%A6%BC%EC%9D%BC%EA%B8%B0%20%ED%83%80%EC%9E%84%EB%A8%B8%EC%8B%A0&url=https%3A%2F%2Fexample.com%2Fdiary",
   );
   assert.equal(
-    buildSocialShareUrl("facebook", { text, url }),
-    "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fexample.com%2Fdiary",
+    buildSocialShareUrl("threads", { text, url }),
+    "https://www.threads.net/intent/post?text=%EA%B7%B8%EB%A6%BC%EC%9D%BC%EA%B8%B0%20%ED%83%80%EC%9E%84%EB%A8%B8%EC%8B%A0%20https%3A%2F%2Fexample.com%2Fdiary",
   );
-  assert.equal(
-    buildSocialShareUrl("band", { text, url }),
-    "https://band.us/plugin/share?body=%EA%B7%B8%EB%A6%BC%EC%9D%BC%EA%B8%B0%20%ED%83%80%EC%9E%84%EB%A8%B8%EC%8B%A0%20https%3A%2F%2Fexample.com%2Fdiary&route=https%3A%2F%2Fexample.com%2Fdiary",
+});
+
+test("buildSocialShareUrl rejects removed SNS targets", () => {
+  assert.throws(
+    () => buildSocialShareUrl("facebook", { text: "text", url: "https://example.com" }),
+    { message: "지원하지 않는 공유 대상입니다." },
   );
 });
 

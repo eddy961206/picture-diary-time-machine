@@ -1,16 +1,8 @@
 const shareTargets = {
   x: ({ text, url }) =>
     `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
-  facebook: ({ url }) =>
-    `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
   threads: ({ text, url }) =>
     `https://www.threads.net/intent/post?text=${encodeURIComponent(`${text} ${url}`)}`,
-  band: ({ text, url }) =>
-    `https://band.us/plugin/share?body=${encodeURIComponent(`${text} ${url}`)}&route=${encodeURIComponent(url)}`,
-  kakaostory: ({ url }) =>
-    `https://story.kakao.com/share?url=${encodeURIComponent(url)}`,
-  naver: ({ text, url }) =>
-    `https://share.naver.com/web/shareView?url=${encodeURIComponent(url)}&title=${encodeURIComponent(text)}`,
 };
 
 export function createImageFilename(format = "png", now = Date.now()) {

@@ -17,7 +17,6 @@ const generateBtn = document.querySelector("#generateBtn");
 const resultImage = document.querySelector("#resultImage");
 const loading = document.querySelector("#loading");
 const downloadLink = document.querySelector("#downloadLink");
-const nativeShare = document.querySelector("#nativeShare");
 const copyPrompt = document.querySelector("#copyPrompt");
 const log = document.querySelector("#log");
 const socialShareButtons = document.querySelectorAll("[data-share-target]");
@@ -87,6 +86,34 @@ function shareText() {
   const data = formData();
   const title = data.title || "그림일기";
   return `그림일기 타임머신으로 만든 ${title}`;
+}
+
+async function shareImageThroughInstalledApps() {
+  const pageUrl = getSharePageUrl();
+  const baseShareData = {
+    title: "그림일기 타임머신",
+    text: shareText(),
+    url: pageUrl,
+  };
+
+  if (!navigator.share) {
+    await navigator.clipboard.writeText(pageUrl);
+    setLog("이 브라우저는 앱 공유를 지원하지 않아서 링크를 복사했어.");
+    return;
+  }
+
+  if (currentImageUrl.startsWith("data:")) {
+    const file = await createImageFileFromDataUrl(currentImageUrl, currentImageFilename);
+    const fileShareData = { title: baseShareData.title, text: baseShareData.text, files: [file] };
+    if (!navigator.canShare || navigator.canShare(fileShareData)) {
+      await navigator.share(fileShareData);
+      setLog("이미지를 공유했어.");
+      return;
+    }
+  }
+
+  await navigator.share(baseShareData);
+  setLog("공유 창을 열었어.");
 }
 
 async function refreshPrompt() {
@@ -166,51 +193,27 @@ copyPrompt.addEventListener("click", async () => {
   setLog("프롬프트 복사했어.");
 });
 
-nativeShare.addEventListener("click", async () => {
-  const pageUrl = getSharePageUrl();
-  const baseShareData = {
-    title: "그림일기 타임머신",
-    text: shareText(),
-    url: pageUrl,
-  };
-
-  try {
-    if (!navigator.share) {
-      await navigator.clipboard.writeText(pageUrl);
-      setLog("이 브라우저는 앱 공유를 지원하지 않아서 링크를 복사했어.");
-      return;
-    }
-
-    if (currentImageUrl.startsWith("data:")) {
-      const file = await createImageFileFromDataUrl(currentImageUrl, currentImageFilename);
-      const fileShareData = { title: baseShareData.title, text: baseShareData.text, files: [file] };
-      if (!navigator.canShare || navigator.canShare(fileShareData)) {
-        await navigator.share(fileShareData);
-        setLog("이미지를 공유했어.");
+socialShareButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    const target = button.dataset.shareTarget;
+    try {
+      if (target === "instagram") {
+        await shareImageThroughInstalledApps();
         return;
       }
-    }
 
-    await navigator.share(baseShareData);
-    setLog("공유 창을 열었어.");
-  } catch (error) {
-    if (error.name === "AbortError") {
-      setLog("공유를 취소했어.");
-      return;
+      const url = buildSocialShareUrl(target, {
+        text: shareText(),
+        url: getSharePageUrl(),
+      });
+      window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+    } catch (error) {
+      if (error.name === "AbortError") {
+        setLog("공유를 취소했어.");
+        return;
+      }
+      setLog("공유가 막혔어. 이미지 저장 후 앱에서 직접 올려줘.", "error");
     }
-    await navigator.clipboard.writeText(pageUrl);
-    setLog("공유가 막혀서 링크를 복사했어.", "error");
-  }
-});
-
-socialShareButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    const target = button.dataset.shareTarget;
-    const url = buildSocialShareUrl(target, {
-      text: shareText(),
-      url: getSharePageUrl(),
-    });
-    window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
   });
 });
 
