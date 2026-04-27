@@ -144,8 +144,17 @@
           </div>
         </div>
         <div class="result-actions">
-          <a class="download disabled" id="downloadLink" download="picture-diary.png">이미지 다운로드</a>
+          <a class="download" id="downloadLink" href="/sample-output.png" download="picture-diary.png">이미지 저장</a>
+          <button type="button" class="ghost mini" id="nativeShare">앱으로 공유</button>
           <button type="button" class="ghost mini" id="copyPrompt">프롬프트 복사</button>
+        </div>
+        <div class="share-panel" aria-label="SNS 공유">
+          <button type="button" class="share-button" data-share-target="x">X</button>
+          <button type="button" class="share-button" data-share-target="facebook">Facebook</button>
+          <button type="button" class="share-button" data-share-target="threads">Threads</button>
+          <button type="button" class="share-button" data-share-target="band">BAND</button>
+          <button type="button" class="share-button" data-share-target="kakaostory">KakaoStory</button>
+          <button type="button" class="share-button" data-share-target="naver">Naver</button>
         </div>
         <details class="prompt-box" open>
           <summary>생성 프롬프트</summary>
@@ -156,6 +165,6 @@
     </section>
   </main>
 
-  <script src="/app.js"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>

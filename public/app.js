@@ -1,3 +1,10 @@
+import {
+  buildSocialShareUrl,
+  createImageFileFromDataUrl,
+  createImageFilename,
+  getSharePageUrl,
+} from "./share-utils.js";
+
 const form = document.querySelector("#diaryForm");
 const statusEl = document.querySelector("#status");
 const photoInput = document.querySelector("#photo");
@@ -10,11 +17,16 @@ const generateBtn = document.querySelector("#generateBtn");
 const resultImage = document.querySelector("#resultImage");
 const loading = document.querySelector("#loading");
 const downloadLink = document.querySelector("#downloadLink");
+const nativeShare = document.querySelector("#nativeShare");
 const copyPrompt = document.querySelector("#copyPrompt");
 const log = document.querySelector("#log");
+const socialShareButtons = document.querySelectorAll("[data-share-target]");
 
 let referenceImageDataUrl = "";
 let lastPrompt = "";
+let currentImageUrl = resultImage.getAttribute("src") || "/sample-output.png";
+let currentImageFormat = "png";
+let currentImageFilename = createImageFilename(currentImageFormat);
 
 const defaultPromptBuilder = (data) => `
 Create one realistic photographed Korean elementary-school picture diary homework page.
@@ -59,6 +71,22 @@ function formData() {
 function setLog(message, tone = "normal") {
   log.textContent = message || "";
   log.dataset.tone = tone;
+}
+
+function setCurrentImage(url, format = "png") {
+  currentImageUrl = url;
+  currentImageFormat = format;
+  currentImageFilename = createImageFilename(currentImageFormat);
+  resultImage.src = currentImageUrl;
+  downloadLink.href = currentImageUrl;
+  downloadLink.download = currentImageFilename;
+  downloadLink.classList.remove("disabled");
+}
+
+function shareText() {
+  const data = formData();
+  const title = data.title || "그림일기";
+  return `그림일기 타임머신으로 만든 ${title}`;
 }
 
 async function refreshPrompt() {
@@ -138,6 +166,54 @@ copyPrompt.addEventListener("click", async () => {
   setLog("프롬프트 복사했어.");
 });
 
+nativeShare.addEventListener("click", async () => {
+  const pageUrl = getSharePageUrl();
+  const baseShareData = {
+    title: "그림일기 타임머신",
+    text: shareText(),
+    url: pageUrl,
+  };
+
+  try {
+    if (!navigator.share) {
+      await navigator.clipboard.writeText(pageUrl);
+      setLog("이 브라우저는 앱 공유를 지원하지 않아서 링크를 복사했어.");
+      return;
+    }
+
+    if (currentImageUrl.startsWith("data:")) {
+      const file = await createImageFileFromDataUrl(currentImageUrl, currentImageFilename);
+      const fileShareData = { title: baseShareData.title, text: baseShareData.text, files: [file] };
+      if (!navigator.canShare || navigator.canShare(fileShareData)) {
+        await navigator.share(fileShareData);
+        setLog("이미지를 공유했어.");
+        return;
+      }
+    }
+
+    await navigator.share(baseShareData);
+    setLog("공유 창을 열었어.");
+  } catch (error) {
+    if (error.name === "AbortError") {
+      setLog("공유를 취소했어.");
+      return;
+    }
+    await navigator.clipboard.writeText(pageUrl);
+    setLog("공유가 막혀서 링크를 복사했어.", "error");
+  }
+});
+
+socialShareButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = button.dataset.shareTarget;
+    const url = buildSocialShareUrl(target, {
+      text: shareText(),
+      url: getSharePageUrl(),
+    });
+    window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+  });
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   await refreshPrompt();
@@ -156,10 +232,7 @@ form.addEventListener("submit", async (event) => {
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "생성 실패");
 
-    resultImage.src = json.image;
-    downloadLink.href = json.image;
-    downloadLink.download = `picture-diary-${Date.now()}.${formData().outputFormat || "png"}`;
-    downloadLink.classList.remove("disabled");
+    setCurrentImage(json.image, formData().outputFormat || "png");
     lastPrompt = json.prompt || lastPrompt;
     promptPreview.textContent = lastPrompt;
     setLog(`완료됐어. 모드: ${json.mode}, 모델: ${json.model}`);
@@ -172,5 +245,6 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+setCurrentImage(currentImageUrl, currentImageFormat);
 checkHealth();
 refreshPrompt();
