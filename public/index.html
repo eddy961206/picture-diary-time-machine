@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>그림일기 타임머신</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero paper-card">
+      <div class="hero__copy">
+        <p class="eyebrow">2010년대 초딩 여름방학 숙제 감성 생성기</p>
+        <h1>그림일기<br />타임머신</h1>
+        <p class="lead">사진 한 장이나 일기 몇 줄만 넣으면, 삐뚤빼뚤한 초2 남자아이 그림일기 사진처럼 만들어줘.</p>
+        <div class="status" id="status">서버 확인 중…</div>
+      </div>
+      <div class="hero__sample">
+        <div class="tape tape--left"></div>
+        <img src="/sample-output.png" alt="샘플 그림일기" />
+        <div class="caption">샘플 결과</div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <form class="panel paper-card" id="diaryForm">
+        <div class="section-title">
+          <span>1</span>
+          <h2>추억 재료 넣기</h2>
+        </div>
+
+        <label class="field file-field">
+          <span>참고 사진</span>
+          <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
+          <small>없어도 돼. 있으면 사진 속 장소/상황을 그림일기로 바꿔줘.</small>
+        </label>
+
+        <div class="preview-box hidden" id="photoPreviewWrap">
+          <img id="photoPreview" alt="업로드 미리보기" />
+          <button type="button" class="ghost mini" id="clearPhoto">사진 지우기</button>
+        </div>
+
+        <div class="grid two">
+          <label class="field">
+            <span>날짜</span>
+            <input name="date" value="2011년 8월 5일 금요일" />
+          </label>
+          <label class="field">
+            <span>날씨</span>
+            <input name="weather" value="맑음" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>제목</span>
+          <input name="title" value="물놀이를 했다" />
+        </label>
+
+        <div class="grid two">
+          <label class="field">
+            <span>주인공</span>
+            <input name="child" value="초등학교 2학년 남자아이" />
+          </label>
+          <label class="field">
+            <span>장소/상황</span>
+            <input name="place" value="가족이랑 계곡에 간 날" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>일기 몇 줄</span>
+          <textarea name="diary" rows="5">오늘 아빠, 엄마, 동생하고 계곡에 가서 물놀이를 했다.
+물이 시원하고 재미있었다.
+다음에 또 가고 싶다.</textarea>
+        </label>
+
+        <label class="field">
+          <span>더 넣고 싶은 디테일</span>
+          <textarea name="detail" rows="3" placeholder="예: 파란 티셔츠, 분홍 튜브, 나무 그늘, 오래된 책상 위에서 찍은 느낌"></textarea>
+        </label>
+
+        <details class="advanced">
+          <summary>세부 옵션</summary>
+          <div class="grid two">
+            <label class="field">
+              <span>이미지 크기</span>
+              <select name="size">
+                <option value="1024x1536" selected>세로형 1024×1536</option>
+                <option value="1024x1024">정사각형 1024×1024</option>
+                <option value="1536x1024">가로형 1536×1024</option>
+                <option value="auto">자동</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>품질</span>
+              <select name="quality">
+                <option value="low">빠른 초안</option>
+                <option value="medium" selected>보통</option>
+                <option value="high">고품질</option>
+                <option value="auto">자동</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid two">
+            <label class="field">
+              <span>출력 포맷</span>
+              <select name="outputFormat">
+                <option value="png" selected>PNG</option>
+                <option value="jpeg">JPEG</option>
+                <option value="webp">WebP</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>시대감</span>
+              <input name="era" value="2010년대 초반 한국 초등학교 방학숙제" />
+            </label>
+          </div>
+          <label class="field">
+            <span>분위기</span>
+            <input name="mood" value="옛날 추억, 살짝 구겨진 학습지, 집 책상 위에서 부모님이 폰으로 찍은 사진" />
+          </label>
+          <label class="field">
+            <span>글씨 느낌</span>
+            <input name="handwriting" value="초등학교 2학년 남자아이의 삐뚤빼뚤하지만 읽히는 연필 글씨" />
+          </label>
+        </details>
+
+        <div class="actions">
+          <button type="button" class="ghost" id="promptOnly">프롬프트만 보기</button>
+          <button type="submit" class="primary" id="generateBtn">그림일기 생성</button>
+        </div>
+      </form>
+
+      <aside class="panel result paper-card">
+        <div class="section-title">
+          <span>2</span>
+          <h2>결과</h2>
+        </div>
+        <div class="result-stage" id="resultStage">
+          <img id="resultImage" src="/sample-output.png" alt="생성 결과" />
+          <div class="loading hidden" id="loading">
+            <div class="spinner"></div>
+            <p>초딩 감성으로 숙제 만드는 중…</p>
+          </div>
+        </div>
+        <div class="result-actions">
+          <a class="download disabled" id="downloadLink" download="picture-diary.png">이미지 다운로드</a>
+          <button type="button" class="ghost mini" id="copyPrompt">프롬프트 복사</button>
+        </div>
+        <details class="prompt-box" open>
+          <summary>생성 프롬프트</summary>
+          <pre id="promptPreview"></pre>
+        </details>
+        <div class="log" id="log"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
