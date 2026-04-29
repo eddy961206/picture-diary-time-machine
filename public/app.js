@@ -123,6 +123,18 @@ function setProviderBadge(user) {
   authProviderBadge.textContent = provider.label;
 }
 
+function getOAuthOptions(provider) {
+  const options = {
+    redirectTo: window.location.origin,
+  };
+
+  if (provider === "kakao") {
+    options.scopes = "profile_nickname profile_image";
+  }
+
+  return options;
+}
+
 function setAuthUi(message = "") {
   if (!supabase) {
     authTitle.textContent = "Supabase 설정이 필요해";
@@ -425,9 +437,7 @@ authButtons.forEach((button) => {
     const provider = button.dataset.authProvider;
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: {
-        redirectTo: window.location.origin,
-      },
+      options: getOAuthOptions(provider),
     });
     if (error) setLog(`로그인 시작 실패: ${error.message}`, "error");
   });
