@@ -40,6 +40,7 @@ let currentImageFilename = createImageFilename(currentImageFormat);
 let supabase = null;
 let currentUser = null;
 let lastGeneratedInput = null;
+let authNotice = "";
 
 const defaultPromptBuilder = (data) => `
 Create one realistic photographed Korean elementary-school picture diary homework page.
@@ -139,16 +140,20 @@ async function completeKakaoLoginFromHash() {
   });
 
   if (error) {
-    setAuthUi(`KakaoTalk 로그인 처리 중 문제가 생겼어: ${error.message}`);
+    authNotice = `KakaoTalk 로그인 처리 중 문제가 생겼어: ${error.message}`;
+    setAuthUi(authNotice);
     return true;
   }
 
   currentUser = data.user || null;
-  setAuthUi("KakaoTalk 계정으로 연결됐어. 이제 일기장을 저장할 수 있어.");
+  authNotice = "KakaoTalk 계정으로 연결됐어. 이제 일기장을 저장할 수 있어.";
+  setAuthUi(authNotice);
   return true;
 }
 
 function setAuthUi(message = "") {
+  const displayMessage = message || authNotice;
+
   if (!supabase) {
     authTitle.textContent = "Supabase 설정이 필요해";
     authSubtitle.textContent = "SUPABASE_URL, SUPABASE_ANON_KEY를 넣으면 로그인과 일기장이 켜져.";
@@ -168,11 +173,11 @@ function setAuthUi(message = "") {
   if (currentUser) {
     const provider = getUserProvider(currentUser);
     authTitle.textContent = currentUser.user_metadata?.full_name || currentUser.email || "로그인됨";
-    authSubtitle.textContent = message || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 생성한 그림일기를 내 일기장에 저장할 수 있어.`;
+    authSubtitle.textContent = displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 생성한 그림일기를 내 일기장에 저장할 수 있어.`;
     diaryBookHint.textContent = "날짜별로 저장된 그림일기를 다시 볼 수 있어.";
   } else {
     authTitle.textContent = "로그인하면 일기장이 저장돼";
-    authSubtitle.textContent = message || "Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.";
+    authSubtitle.textContent = displayMessage || "Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.";
     diaryBookHint.textContent = "로그인하면 날짜별로 전에 썼던 그림일기를 다시 볼 수 있어.";
   }
 }
@@ -360,6 +365,7 @@ async function initAuth() {
   const params = new URLSearchParams(window.location.search);
   const authError = params.get("error_description") || params.get("error");
   if (!completedKakaoLogin) {
+    authNotice = authError ? `로그인 처리 중 문제가 생겼어: ${authError}` : "";
     setAuthUi(authError ? `로그인 처리 중 문제가 생겼어: ${authError}` : "");
   }
   await loadDiaryEntries();
@@ -370,6 +376,7 @@ async function initAuth() {
 
   supabase.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
+    if (currentUser) authNotice = "";
     setAuthUi();
     await loadDiaryEntries();
   });
@@ -470,6 +477,7 @@ signOut.addEventListener("click", async () => {
   if (!supabase) return;
   await supabase.auth.signOut();
   currentUser = null;
+  authNotice = "로그아웃했어.";
   setAuthUi("로그아웃했어.");
   renderDiaryEntries([]);
 });
