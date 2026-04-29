@@ -4,7 +4,7 @@ const COOKIE_NAME = "kakao_oauth_state";
 const COOKIE_MAX_AGE_SECONDS = 10 * 60;
 const KAKAO_AUTHORIZE_URL = "https://kauth.kakao.com/oauth/authorize";
 const KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
-const KAKAO_SCOPES = "openid profile_nickname profile_image";
+const KAKAO_SCOPES = "openid profile_nickname";
 
 function base64UrlEncode(value) {
   return Buffer.from(value).toString("base64url");

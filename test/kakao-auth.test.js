@@ -24,7 +24,7 @@ test("getKakaoRedirectUri points at the app callback route", () => {
   );
 });
 
-test("buildKakaoAuthorizeUrl requests OIDC profile scopes without account_email", () => {
+test("buildKakaoAuthorizeUrl requests OIDC nickname scope without account_email", () => {
   process.env.KAKAO_REST_API_KEY = "test-client-id";
 
   const url = buildKakaoAuthorizeUrl(createRequest(), {
@@ -36,10 +36,11 @@ test("buildKakaoAuthorizeUrl requests OIDC profile scopes without account_email"
   assert.equal(url.searchParams.get("client_id"), "test-client-id");
   assert.equal(url.searchParams.get("redirect_uri"), "https://example.com/api/kakao-callback");
   assert.equal(url.searchParams.get("response_type"), "code");
-  assert.equal(url.searchParams.get("scope"), "openid profile_nickname profile_image");
+  assert.equal(url.searchParams.get("scope"), "openid profile_nickname");
   assert.equal(url.searchParams.get("state"), "state-123");
   assert.equal(url.searchParams.get("nonce"), "nonce-456");
   assert.equal(url.searchParams.get("scope").includes("account_email"), false);
+  assert.equal(url.searchParams.get("scope").includes("profile_image"), false);
 });
 
 test("exchangeKakaoCodeForTokenSet returns both id token and access token", async () => {
