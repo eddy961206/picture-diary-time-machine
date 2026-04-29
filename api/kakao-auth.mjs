@@ -54,10 +54,9 @@ function signPayload(payload) {
   return crypto.createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-function createStateCookie({ state, nonce }) {
+function createStateCookie({ state }) {
   const payload = base64UrlEncode(JSON.stringify({
     state,
-    nonce,
     createdAt: Date.now(),
   }));
   const signature = signPayload(payload);
@@ -116,7 +115,7 @@ export function getKakaoRedirectUri(req) {
   return `${getRequestOrigin(req)}/api/kakao-callback`;
 }
 
-export function buildKakaoAuthorizeUrl(req, { state, nonce } = {}) {
+export function buildKakaoAuthorizeUrl(req, { state } = {}) {
   const clientId = process.env.KAKAO_REST_API_KEY || "";
   if (!clientId) throw new Error("KAKAO_REST_API_KEY가 필요해.");
 
@@ -126,7 +125,6 @@ export function buildKakaoAuthorizeUrl(req, { state, nonce } = {}) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", KAKAO_SCOPES);
   url.searchParams.set("state", state);
-  url.searchParams.set("nonce", nonce);
   return url;
 }
 
@@ -134,9 +132,8 @@ export async function handleKakaoLogin(req, res) {
   try {
     const origin = getRequestOrigin(req);
     const state = crypto.randomBytes(24).toString("base64url");
-    const nonce = crypto.randomBytes(24).toString("base64url");
-    const cookie = createStateCookie({ state, nonce });
-    const url = buildKakaoAuthorizeUrl(req, { state, nonce });
+    const cookie = createStateCookie({ state });
+    const url = buildKakaoAuthorizeUrl(req, { state });
 
     redirect(res, 302, url.toString(), {
       "Set-Cookie": buildCookie(cookie, origin),
@@ -201,7 +198,7 @@ export async function handleKakaoCallback(req, res) {
     const returnedState = requestUrl.searchParams.get("state");
     if (!code || !returnedState) throw new Error("카카오 인증 코드가 비어 있어.");
 
-    const { state, nonce } = readStateCookie(req);
+    const { state } = readStateCookie(req);
     if (state !== returnedState) throw new Error("카카오 로그인 state가 맞지 않아.");
 
     const { accessToken, idToken } = await exchangeKakaoCodeForTokenSet(req, code);
@@ -209,7 +206,6 @@ export async function handleKakaoCallback(req, res) {
     destination.hash = new URLSearchParams({
       kakao_access_token: accessToken,
       kakao_id_token: idToken,
-      kakao_nonce: nonce,
     }).toString();
 
     redirect(res, 302, destination.toString(), {

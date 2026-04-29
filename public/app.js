@@ -128,15 +128,13 @@ async function completeKakaoLoginFromHash() {
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const accessToken = params.get("kakao_access_token");
   const idToken = params.get("kakao_id_token");
-  const nonce = params.get("kakao_nonce");
-  if (!idToken || !nonce) return false;
+  if (!idToken) return false;
 
   window.history.replaceState({}, document.title, window.location.pathname);
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "kakao",
     token: idToken,
     access_token: accessToken || undefined,
-    nonce,
   });
 
   if (error) {

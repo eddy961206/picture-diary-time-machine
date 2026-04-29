@@ -29,7 +29,6 @@ test("buildKakaoAuthorizeUrl requests OIDC nickname scope without account_email"
 
   const url = buildKakaoAuthorizeUrl(createRequest(), {
     state: "state-123",
-    nonce: "nonce-456",
   });
 
   assert.equal(url.origin + url.pathname, "https://kauth.kakao.com/oauth/authorize");
@@ -38,7 +37,7 @@ test("buildKakaoAuthorizeUrl requests OIDC nickname scope without account_email"
   assert.equal(url.searchParams.get("response_type"), "code");
   assert.equal(url.searchParams.get("scope"), "openid profile_nickname");
   assert.equal(url.searchParams.get("state"), "state-123");
-  assert.equal(url.searchParams.get("nonce"), "nonce-456");
+  assert.equal(url.searchParams.has("nonce"), false);
   assert.equal(url.searchParams.get("scope").includes("account_email"), false);
   assert.equal(url.searchParams.get("scope").includes("profile_image"), false);
 });
