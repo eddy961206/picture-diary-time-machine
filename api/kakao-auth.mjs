@@ -146,7 +146,7 @@ export async function handleKakaoLogin(req, res) {
   }
 }
 
-export async function exchangeKakaoCodeForIdToken(req, code) {
+export async function exchangeKakaoCodeForTokenSet(req, code) {
   const clientId = process.env.KAKAO_REST_API_KEY || "";
   if (!clientId) throw new Error("KAKAO_REST_API_KEY가 필요해.");
 
@@ -179,7 +179,14 @@ export async function exchangeKakaoCodeForIdToken(req, code) {
     throw new Error("카카오에서 id_token을 받지 못했어. OpenID Connect와 openid scope를 확인해야 해.");
   }
 
-  return payload.id_token;
+  if (!payload.access_token) {
+    throw new Error("카카오에서 access_token을 받지 못했어.");
+  }
+
+  return {
+    accessToken: payload.access_token,
+    idToken: payload.id_token,
+  };
 }
 
 export async function handleKakaoCallback(req, res) {
@@ -197,9 +204,10 @@ export async function handleKakaoCallback(req, res) {
     const { state, nonce } = readStateCookie(req);
     if (state !== returnedState) throw new Error("카카오 로그인 state가 맞지 않아.");
 
-    const idToken = await exchangeKakaoCodeForIdToken(req, code);
+    const { accessToken, idToken } = await exchangeKakaoCodeForTokenSet(req, code);
     const destination = new URL("/", origin);
     destination.hash = new URLSearchParams({
+      kakao_access_token: accessToken,
       kakao_id_token: idToken,
       kakao_nonce: nonce,
     }).toString();
