@@ -24,6 +24,7 @@ const socialShareButtons = document.querySelectorAll("[data-share-target]");
 const authTitle = document.querySelector("#authTitle");
 const authSubtitle = document.querySelector("#authSubtitle");
 const authActions = document.querySelector("#authActions");
+const authProviderBadge = document.querySelector("#authProviderBadge");
 const authButtons = document.querySelectorAll("[data-auth-provider]");
 const signOut = document.querySelector("#signOut");
 const saveDiary = document.querySelector("#saveDiary");
@@ -101,10 +102,32 @@ function setLog(message, tone = "normal") {
   log.dataset.tone = tone;
 }
 
+function getUserProvider(user) {
+  const provider = user?.app_metadata?.provider || user?.identities?.[0]?.provider || "";
+  if (provider === "custom:naver" || provider === "naver") return { key: "naver", label: "Naver 로그인 중" };
+  if (provider === "kakao") return { key: "kakao", label: "KakaoTalk 로그인 중" };
+  if (provider === "google") return { key: "google", label: "Google 로그인 중" };
+  return { key: "unknown", label: "로그인 완료" };
+}
+
+function setProviderBadge(user) {
+  if (!authProviderBadge) return;
+  if (!user) {
+    authProviderBadge.className = "auth-provider-badge hidden";
+    authProviderBadge.textContent = "";
+    return;
+  }
+
+  const provider = getUserProvider(user);
+  authProviderBadge.className = `auth-provider-badge auth-provider-badge--${provider.key}`;
+  authProviderBadge.textContent = provider.label;
+}
+
 function setAuthUi(message = "") {
   if (!supabase) {
     authTitle.textContent = "Supabase 설정이 필요해";
     authSubtitle.textContent = "SUPABASE_URL, SUPABASE_ANON_KEY를 넣으면 로그인과 일기장이 켜져.";
+    setProviderBadge(null);
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
     diaryBookHint.textContent = "Supabase 프로젝트를 연결하면 날짜별 그림일기를 저장하고 다시 볼 수 있어.";
@@ -115,10 +138,12 @@ function setAuthUi(message = "") {
   authActions.classList.toggle("hidden", Boolean(currentUser));
   signOut.classList.toggle("hidden", !currentUser);
   saveDiary.disabled = !currentUser || !currentImageUrl.startsWith("data:");
+  setProviderBadge(currentUser);
 
   if (currentUser) {
+    const provider = getUserProvider(currentUser);
     authTitle.textContent = currentUser.user_metadata?.full_name || currentUser.email || "로그인됨";
-    authSubtitle.textContent = message || "생성한 그림일기를 내 일기장에 저장할 수 있어.";
+    authSubtitle.textContent = message || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 생성한 그림일기를 내 일기장에 저장할 수 있어.`;
     diaryBookHint.textContent = "날짜별로 저장된 그림일기를 다시 볼 수 있어.";
   } else {
     authTitle.textContent = "로그인하면 일기장이 저장돼";
@@ -306,8 +331,14 @@ async function initAuth() {
   supabase = await getSupabaseClient();
   const { data } = await supabase.auth.getUser();
   currentUser = data.user || null;
-  setAuthUi();
+  const params = new URLSearchParams(window.location.search);
+  const authError = params.get("error_description") || params.get("error");
+  setAuthUi(authError ? `로그인 처리 중 문제가 생겼어: ${authError}` : "");
   await loadDiaryEntries();
+
+  if (authError) {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 
   supabase.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;

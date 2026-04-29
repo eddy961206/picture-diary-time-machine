@@ -130,6 +130,41 @@ h1 {
   line-height: 1.5;
 }
 
+.auth-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin-bottom: 10px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(97,72,41,.18);
+  background: #fff8dc;
+  color: #5c4c36;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 5px 14px rgba(61, 43, 21, .09);
+}
+
+.auth-provider-badge--google {
+  background: #edf4ff;
+  color: #1f4f77;
+}
+
+.auth-provider-badge--kakao {
+  background: #fee500;
+  color: #1f1b00;
+}
+
+.auth-provider-badge--naver {
+  background: #03c75a;
+  color: #fff;
+}
+
+.auth-provider-badge--unknown {
+  background: #f3e6ce;
+  color: #5c4c36;
+}
+
 .auth-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
