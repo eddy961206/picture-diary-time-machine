@@ -2,6 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { handleKakaoCallback, handleKakaoLogin } from "./api/kakao-auth.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -341,6 +342,16 @@ const server = http.createServer(async (req, res) => {
       hasApiKey: Boolean(OPENAI_API_KEY),
       imageModel: OPENAI_IMAGE_MODEL,
     });
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/kakao-login")) {
+    await handleKakaoLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/kakao-callback")) {
+    await handleKakaoCallback(req, res);
     return;
   }
 

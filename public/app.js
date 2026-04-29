@@ -123,16 +123,27 @@ function setProviderBadge(user) {
   authProviderBadge.textContent = provider.label;
 }
 
-function getOAuthOptions(provider) {
-  const options = {
-    redirectTo: window.location.origin,
-  };
+async function completeKakaoLoginFromHash() {
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const idToken = params.get("kakao_id_token");
+  const nonce = params.get("kakao_nonce");
+  if (!idToken || !nonce) return false;
 
-  if (provider === "kakao") {
-    options.scopes = "profile_nickname profile_image";
+  window.history.replaceState({}, document.title, window.location.pathname);
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: "kakao",
+    token: idToken,
+    nonce,
+  });
+
+  if (error) {
+    setAuthUi(`KakaoTalk 로그인 처리 중 문제가 생겼어: ${error.message}`);
+    return true;
   }
 
-  return options;
+  currentUser = data.user || null;
+  setAuthUi("KakaoTalk 계정으로 연결됐어. 이제 일기장을 저장할 수 있어.");
+  return true;
 }
 
 function setAuthUi(message = "") {
@@ -341,11 +352,14 @@ async function initAuth() {
   }
 
   supabase = await getSupabaseClient();
+  const completedKakaoLogin = await completeKakaoLoginFromHash();
   const { data } = await supabase.auth.getUser();
   currentUser = data.user || null;
   const params = new URLSearchParams(window.location.search);
   const authError = params.get("error_description") || params.get("error");
-  setAuthUi(authError ? `로그인 처리 중 문제가 생겼어: ${authError}` : "");
+  if (!completedKakaoLogin) {
+    setAuthUi(authError ? `로그인 처리 중 문제가 생겼어: ${authError}` : "");
+  }
   await loadDiaryEntries();
 
   if (authError) {
@@ -435,9 +449,16 @@ authButtons.forEach((button) => {
   button.addEventListener("click", async () => {
     if (!supabase) return;
     const provider = button.dataset.authProvider;
+    if (provider === "kakao") {
+      window.location.href = "/api/kakao-login";
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: getOAuthOptions(provider),
+      options: {
+        redirectTo: window.location.origin,
+      },
     });
     if (error) setLog(`로그인 시작 실패: ${error.message}`, "error");
   });
