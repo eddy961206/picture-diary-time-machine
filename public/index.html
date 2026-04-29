@@ -13,6 +13,18 @@
         <p class="eyebrow">2010년대 초딩 여름방학 숙제 감성 생성기</p>
         <h1>그림일기<br />타임머신</h1>
         <p class="lead">사진 한 장이나 일기 몇 줄만 넣으면, 삐뚤빼뚤한 초2 남자아이 그림일기 사진처럼 만들어줘.</p>
+        <div class="auth-card" id="authCard">
+          <div>
+            <strong id="authTitle">로그인하면 일기장이 저장돼</strong>
+            <p id="authSubtitle">Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.</p>
+          </div>
+          <div class="auth-actions" id="authActions">
+            <button type="button" class="auth-button" data-auth-provider="google">Google</button>
+            <button type="button" class="auth-button" data-auth-provider="kakao">KakaoTalk</button>
+            <button type="button" class="auth-button" data-auth-provider="custom:naver">Naver</button>
+          </div>
+          <button type="button" class="ghost mini hidden" id="signOut">로그아웃</button>
+        </div>
         <div class="status" id="status">서버 확인 중…</div>
       </div>
       <div class="hero__sample">
@@ -145,6 +157,7 @@
         </div>
         <div class="result-actions">
           <a class="download" id="downloadLink" href="/sample-output.png" download="picture-diary.png">이미지 저장</a>
+          <button type="button" class="primary mini" id="saveDiary">일기장에 저장</button>
           <button type="button" class="ghost mini" id="copyPrompt">프롬프트 복사</button>
         </div>
         <div class="share-panel" aria-label="SNS 공유">
@@ -158,6 +171,23 @@
         </details>
         <div class="log" id="log"></div>
       </aside>
+    </section>
+
+    <section class="diary-book paper-card" id="diaryBook">
+      <div class="section-title">
+        <span>3</span>
+        <h2>내 그림일기장</h2>
+      </div>
+      <div class="diary-toolbar">
+        <div>
+          <strong id="diaryBookTitle">저장된 일기</strong>
+          <p id="diaryBookHint">로그인하면 날짜별로 전에 썼던 그림일기를 다시 볼 수 있어.</p>
+        </div>
+        <button type="button" class="ghost mini" id="refreshDiary">새로고침</button>
+      </div>
+      <div class="diary-list" id="diaryList">
+        <div class="empty-state">아직 저장된 그림일기가 없어.</div>
+      </div>
     </section>
   </main>
 

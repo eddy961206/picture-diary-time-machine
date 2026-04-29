@@ -24,6 +24,8 @@
 - 초등학생 그림일기 감성 프롬프트 자동 생성
 - OpenAI Image API로 이미지 생성
 - 결과 이미지 다운로드
+- Google, KakaoTalk, Naver OAuth 로그인
+- 로그인한 사용자별 그림일기 저장 및 날짜별 다시 보기
 - API 키가 없어도 샘플 이미지와 프롬프트 미리보기 가능
 
 ## 실행 방법
@@ -41,7 +43,17 @@ cp .env.example .env
 OPENAI_API_KEY=sk-...
 OPENAI_IMAGE_MODEL=gpt-image-2
 PORT=8787
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
+
+로그인과 일기장 저장을 사용하려면 Supabase 프로젝트가 필요합니다.
+
+1. Supabase에서 새 프로젝트를 만듭니다.
+2. `supabase.schema.sql` 내용을 SQL Editor에서 실행합니다.
+3. Authentication Providers에서 Google과 Kakao를 활성화합니다.
+4. Naver는 Supabase 기본 제공 Provider 목록에 없으므로 Custom OAuth/OIDC Provider로 `custom:naver`를 만들어 연결합니다.
+5. Vercel 환경 변수에도 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 추가합니다.
 
 실행:
 
@@ -61,8 +73,8 @@ http://localhost:8787
 
 ## 배포할 때 주의할 점
 
-- API 키는 절대 프론트엔드에 넣지 마.
-- 지금 코드는 작은 MVP라서 로그인, 결제, 저장소, rate limit은 없습니다.
+- API 키는 절대 프론트엔드에 넣지 않아야 합니다.
+- 지금 코드는 작은 MVP라서 결제와 rate limit은 없습니다.
 - 공개 서비스로 만들 경우, 서버 쪽에 사용자별 요청 제한, 비용 한도, 업로드 이미지 삭제 정책을 꼭 넣으셔야 합니다.
 - 생성 이미지가 실제 과거 숙제처럼 보일 수 있으니, 서비스 설명에 `AI 생성 이미지`라는 안내를 넣는 것이 좋습니다.
 
@@ -70,6 +82,6 @@ http://localhost:8787
 
 - 결과 4장 비교 생성
 - 일기 문장 자동 초2 말투 변환
-- 사용자 갤러리/저장 기능
+- 일기장 검색/월별 보기
 - Vercel, Render, Fly.io 같은 곳에 배포
 - 결제 전환용 랜딩 페이지 추가

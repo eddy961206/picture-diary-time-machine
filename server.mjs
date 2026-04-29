@@ -326,6 +326,15 @@ function serveStatic(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if (req.method === "GET" && req.url === "/api/config") {
+    sendJson(res, 200, {
+      ok: true,
+      supabaseUrl: process.env.SUPABASE_URL || "",
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+    });
+    return;
+  }
+
   if (req.method === "GET" && req.url === "/api/health") {
     sendJson(res, 200, {
       ok: true,

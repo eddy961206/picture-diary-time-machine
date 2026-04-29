@@ -4,6 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js";
 
 const form = document.querySelector("#diaryForm");
 const statusEl = document.querySelector("#status");
@@ -20,12 +21,24 @@ const downloadLink = document.querySelector("#downloadLink");
 const copyPrompt = document.querySelector("#copyPrompt");
 const log = document.querySelector("#log");
 const socialShareButtons = document.querySelectorAll("[data-share-target]");
+const authTitle = document.querySelector("#authTitle");
+const authSubtitle = document.querySelector("#authSubtitle");
+const authActions = document.querySelector("#authActions");
+const authButtons = document.querySelectorAll("[data-auth-provider]");
+const signOut = document.querySelector("#signOut");
+const saveDiary = document.querySelector("#saveDiary");
+const refreshDiary = document.querySelector("#refreshDiary");
+const diaryList = document.querySelector("#diaryList");
+const diaryBookHint = document.querySelector("#diaryBookHint");
 
 let referenceImageDataUrl = "";
 let lastPrompt = "";
 let currentImageUrl = resultImage.getAttribute("src") || "/sample-output.png";
 let currentImageFormat = "png";
 let currentImageFilename = createImageFilename(currentImageFormat);
+let supabase = null;
+let currentUser = null;
+let lastGeneratedInput = null;
 
 const defaultPromptBuilder = (data) => `
 Create one realistic photographed Korean elementary-school picture diary homework page.
@@ -88,6 +101,32 @@ function setLog(message, tone = "normal") {
   log.dataset.tone = tone;
 }
 
+function setAuthUi(message = "") {
+  if (!supabase) {
+    authTitle.textContent = "Supabase 설정이 필요해";
+    authSubtitle.textContent = "SUPABASE_URL, SUPABASE_ANON_KEY를 넣으면 로그인과 일기장이 켜져.";
+    authButtons.forEach((button) => { button.disabled = true; });
+    saveDiary.disabled = true;
+    diaryBookHint.textContent = "Supabase 프로젝트를 연결하면 날짜별 그림일기를 저장하고 다시 볼 수 있어.";
+    return;
+  }
+
+  authButtons.forEach((button) => { button.disabled = Boolean(currentUser); });
+  authActions.classList.toggle("hidden", Boolean(currentUser));
+  signOut.classList.toggle("hidden", !currentUser);
+  saveDiary.disabled = !currentUser || !currentImageUrl.startsWith("data:");
+
+  if (currentUser) {
+    authTitle.textContent = currentUser.user_metadata?.full_name || currentUser.email || "로그인됨";
+    authSubtitle.textContent = message || "생성한 그림일기를 내 일기장에 저장할 수 있어.";
+    diaryBookHint.textContent = "날짜별로 저장된 그림일기를 다시 볼 수 있어.";
+  } else {
+    authTitle.textContent = "로그인하면 일기장이 저장돼";
+    authSubtitle.textContent = message || "Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.";
+    diaryBookHint.textContent = "로그인하면 날짜별로 전에 썼던 그림일기를 다시 볼 수 있어.";
+  }
+}
+
 function setCurrentImage(url, format = "png") {
   currentImageUrl = url;
   currentImageFormat = format;
@@ -96,6 +135,7 @@ function setCurrentImage(url, format = "png") {
   downloadLink.href = currentImageUrl;
   downloadLink.download = currentImageFilename;
   downloadLink.classList.remove("disabled");
+  setAuthUi();
 }
 
 function shareText() {
@@ -166,6 +206,114 @@ async function checkHealth() {
   } catch {
     statusEl.textContent = "서버 연결 확인 실패";
   }
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = meta.match(/data:(.*?);base64/)?.[1] || "image/png";
+  const bytes = Uint8Array.from(atob(b64), (char) => char.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function renderDiaryEntries(entries = []) {
+  if (!currentUser) {
+    diaryList.innerHTML = '<div class="empty-state">로그인하면 내 그림일기장을 볼 수 있어.</div>';
+    return;
+  }
+
+  if (!entries.length) {
+    diaryList.innerHTML = '<div class="empty-state">아직 저장된 그림일기가 없어.</div>';
+    return;
+  }
+
+  diaryList.innerHTML = entries.map((entry) => `
+    <article class="diary-entry">
+      <button type="button" class="diary-entry__image" data-entry-id="${entry.id}">
+        <img src="${escapeHtml(entry.image_url)}" alt="${escapeHtml(entry.title)}" loading="lazy" />
+      </button>
+      <div class="diary-entry__body">
+        <div class="diary-entry__meta">${escapeHtml(entry.diary_date || "날짜 없음")} · ${escapeHtml(entry.weather || "날씨 없음")}</div>
+        <h3>${escapeHtml(entry.title)}</h3>
+        <p>${escapeHtml(entry.place)}</p>
+        <button type="button" class="ghost mini" data-delete-entry="${entry.id}">삭제</button>
+      </div>
+    </article>
+  `).join("");
+
+  diaryList.querySelectorAll("[data-entry-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const entry = entries.find((item) => item.id === button.dataset.entryId);
+      if (!entry) return;
+      setCurrentImage(entry.image_url, entry.image_format || "png");
+      promptPreview.textContent = entry.prompt || "";
+      lastPrompt = entry.prompt || "";
+      setLog(`${entry.diary_date || "이전"} 그림일기를 열었어.`);
+    });
+  });
+
+  diaryList.querySelectorAll("[data-delete-entry]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!supabase || !currentUser) return;
+      const id = button.dataset.deleteEntry;
+      const { error } = await supabase.from("diary_entries").delete().eq("id", id);
+      if (error) {
+        setLog(`삭제 실패: ${error.message}`, "error");
+        return;
+      }
+      setLog("일기를 삭제했어.");
+      await loadDiaryEntries();
+    });
+  });
+}
+
+async function loadDiaryEntries() {
+  if (!supabase || !currentUser) {
+    renderDiaryEntries([]);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("diary_entries")
+    .select("id, diary_date, weather, title, place, image_url, image_format, prompt, created_at")
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (error) {
+    diaryList.innerHTML = `<div class="empty-state">일기장을 불러오지 못했어: ${escapeHtml(error.message)}</div>`;
+    return;
+  }
+
+  renderDiaryEntries(data || []);
+}
+
+async function initAuth() {
+  const config = await getSupabaseConfig();
+  if (!config.configured) {
+    setAuthUi();
+    renderDiaryEntries([]);
+    return;
+  }
+
+  supabase = await getSupabaseClient();
+  const { data } = await supabase.auth.getUser();
+  currentUser = data.user || null;
+  setAuthUi();
+  await loadDiaryEntries();
+
+  supabase.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user || null;
+    setAuthUi();
+    await loadDiaryEntries();
+  });
 }
 
 function readFileAsDataUrl(file) {
@@ -240,6 +388,84 @@ socialShareButtons.forEach((button) => {
   });
 });
 
+authButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    if (!supabase) return;
+    const provider = button.dataset.authProvider;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) setLog(`로그인 시작 실패: ${error.message}`, "error");
+  });
+});
+
+signOut.addEventListener("click", async () => {
+  if (!supabase) return;
+  await supabase.auth.signOut();
+  currentUser = null;
+  setAuthUi("로그아웃했어.");
+  renderDiaryEntries([]);
+});
+
+refreshDiary.addEventListener("click", loadDiaryEntries);
+
+saveDiary.addEventListener("click", async () => {
+  if (!supabase || !currentUser) {
+    setLog("로그인해야 일기장에 저장할 수 있어.", "error");
+    return;
+  }
+  if (!currentImageUrl.startsWith("data:")) {
+    setLog("새로 생성한 그림일기만 저장할 수 있어.", "error");
+    return;
+  }
+
+  const data = lastGeneratedInput || formData();
+  const ext = currentImageFormat === "jpeg" ? "jpg" : currentImageFormat;
+  const path = `${currentUser.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+  const blob = dataUrlToBlob(currentImageUrl);
+
+  saveDiary.disabled = true;
+  setLog("일기장에 저장하는 중이야.");
+
+  const upload = await supabase.storage.from("diary-images").upload(path, blob, {
+    contentType: blob.type,
+    upsert: false,
+  });
+
+  if (upload.error) {
+    saveDiary.disabled = false;
+    setLog(`이미지 저장 실패: ${upload.error.message}`, "error");
+    return;
+  }
+
+  const { data: publicUrlData } = supabase.storage.from("diary-images").getPublicUrl(path);
+  const insert = await supabase.from("diary_entries").insert({
+    user_id: currentUser.id,
+    diary_date: data.date || "",
+    weather: data.weather || "",
+    title: data.title || "그림일기",
+    child: data.child || "",
+    place: data.place || "",
+    diary_text: data.diary || "",
+    detail: data.detail || "",
+    image_url: publicUrlData.publicUrl,
+    image_format: currentImageFormat,
+    prompt: lastPrompt || "",
+  });
+
+  saveDiary.disabled = false;
+  if (insert.error) {
+    setLog(`일기 저장 실패: ${insert.error.message}`, "error");
+    return;
+  }
+
+  setLog("일기장에 저장했어.");
+  await loadDiaryEntries();
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!validateRequiredInputs()) return;
@@ -260,6 +486,7 @@ form.addEventListener("submit", async (event) => {
     if (!json.ok) throw new Error(json.error || "생성 실패");
 
     setCurrentImage(json.image, formData().outputFormat || "png");
+    lastGeneratedInput = formData();
     lastPrompt = json.prompt || lastPrompt;
     promptPreview.textContent = lastPrompt;
     setLog(`완료됐어. 모드: ${json.mode}, 모델: ${json.model}`);
@@ -275,3 +502,4 @@ form.addEventListener("submit", async (event) => {
 setCurrentImage(currentImageUrl, currentImageFormat);
 checkHealth();
 refreshPrompt();
+initAuth();
