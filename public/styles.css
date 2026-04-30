@@ -281,6 +281,61 @@ textarea:focus {
   border-color: #ffb985;
 }
 
+.locked-preview {
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 2px solid #ffb985;
+  border-radius: var(--radius-sm);
+  background: #fff7f0;
+}
+
+.locked-preview strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.locked-preview p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.form-locked {
+  position: relative;
+  padding: 16px;
+  border: 2px dashed #d8d1c8;
+  border-radius: var(--radius-sm);
+  background: #f7f5f1;
+}
+
+.form-locked::before {
+  content: "로그인 후 입력 가능";
+  display: inline-flex;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #2d2a24;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.form-locked textarea,
+.form-locked input[type="file"],
+.form-locked .mood-group span {
+  background: #ece8e1;
+  color: #9a9186;
+  border-color: #ded8cf;
+  cursor: not-allowed;
+}
+
+.form-locked .field {
+  opacity: 0.78;
+}
+
 .quota-card[data-state="eraser"] {
   background: #fff9ed;
   border-color: #ffcc80;
@@ -310,10 +365,6 @@ textarea:focus {
 .auth-card[data-state="unavailable"] {
   background: #f5f5f5;
   border-color: #e0e0e0;
-}
-
-.auth-card.attention {
-  animation: authPulse 0.7s ease;
 }
 
 .auth-card__header {
@@ -354,11 +405,6 @@ textarea:focus {
   display: flex;
   gap: 8px;
   margin-top: 14px;
-}
-
-@keyframes authPulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 157, 108, 0.5); }
-  100% { box-shadow: 0 0 0 12px rgba(255, 157, 108, 0); }
 }
 
 .auth-badge--google { color: #4285f4; }

@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-login-state";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-disabled-form";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -23,6 +23,8 @@ const photoInput = document.querySelector("#photo");
 const photoPreviewWrap = document.querySelector("#photoPreviewWrap");
 const photoPreview = document.querySelector("#photoPreview");
 const clearPhoto = document.querySelector("#clearPhoto");
+const creationFields = document.querySelector("#creationFields");
+const lockedPreview = document.querySelector("#lockedPreview");
 const generateBtn = document.querySelector("#generateBtn");
 const eraserChance = document.querySelector("#eraserChance");
 const resultImage = document.querySelector("#resultImage");
@@ -111,11 +113,11 @@ function updateRitualUi() {
   const authUnavailable = cannotStartLogin();
 
   if (authUnavailable) {
-    quotaTitle.textContent = "로그인 설정을 기다리는 중이야.";
-    quotaText.textContent = "사이트는 둘러볼 수 있지만 아직 생성은 막혀 있어.";
+    quotaTitle.textContent = "샘플로 결과를 먼저 확인해봐.";
+    quotaText.textContent = "지금은 직접 만들기 설정이 아직 준비되지 않았어.";
   } else if (needsLogin) {
-    quotaTitle.textContent = "오늘 일기를 만들 준비가 됐어.";
-    quotaText.textContent = "로그인하면 네 OpenAI 키 없이 바로 한 장 만들 수 있어.";
+    quotaTitle.textContent = "샘플로 결과를 먼저 확인해봐.";
+    quotaText.textContent = "직접 만들기는 로그인 후 열려.";
   } else if (state.generations === 0) {
     quotaTitle.textContent = "오늘 일기는 아직 안 냈어.";
     quotaText.textContent = "오늘의 그림일기 1장 남음";
@@ -128,13 +130,16 @@ function updateRitualUi() {
   }
 
   quotaCard.dataset.state = authUnavailable ? "locked" : needsLogin ? "login" : locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
-  generateBtn.disabled = locked || authUnavailable;
-  generateBtn.textContent = authUnavailable ? "로그인 설정 대기 중" : needsLogin ? "로그인하고 그림일기 만들기" : hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
+  creationFields.classList.toggle("form-locked", authUnavailable || needsLogin);
+  creationFields.setAttribute("aria-disabled", String(authUnavailable || needsLogin));
+  lockedPreview.classList.toggle("hidden", !authUnavailable && !needsLogin);
+  generateBtn.disabled = locked || authUnavailable || needsLogin;
+  generateBtn.textContent = authUnavailable ? "직접 만들기 준비 중" : needsLogin ? "로그인 후 직접 만들기" : hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
   eraserChance.disabled = locked || needsLogin || authUnavailable;
-  form.elements.diary.disabled = locked;
-  photoInput.disabled = locked;
-  form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
+  form.elements.diary.disabled = locked || authUnavailable || needsLogin;
+  photoInput.disabled = locked || authUnavailable || needsLogin;
+  form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked || authUnavailable || needsLogin; });
 
   streakTitle.textContent = getStreakReward(state.streak);
   streakText.textContent = state.streak
@@ -222,8 +227,8 @@ function setAuthUi(message = "") {
     setText(authSubtitle, displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 이제 오늘의 그림일기를 만들 수 있어.`);
     setText(diaryBookHint, "날짜별로 제출한 그림일기를 다시 볼 수 있어.");
   } else {
-    setText(authTitle, "만들 때만 로그인이 필요해");
-    setText(authSubtitle, displayMessage || "한 줄을 적고 분위기를 고른 뒤, 아래 계정 중 하나로 로그인하면 바로 생성돼. 네 OpenAI 키는 필요 없어.");
+    setText(authTitle, "직접 만들기는 로그인 후 가능해");
+    setText(authSubtitle, displayMessage || "샘플을 보고 마음에 들면 아래 계정 중 하나로 로그인해. 네 OpenAI 키는 필요 없어.");
     setText(diaryBookHint, "로그인하면 날짜별로 전에 냈던 숙제를 다시 볼 수 있어.");
   }
   updateRitualUi();
@@ -600,11 +605,7 @@ form.addEventListener("submit", async (event) => {
     return;
   }
   if (needsLoginForGeneration()) {
-    authCard.classList.remove("attention");
-    void authCard.offsetWidth;
-    authCard.classList.add("attention");
-    authCard.scrollIntoView({ behavior: "smooth", block: "center" });
-    setLog("한 줄은 그대로 둘게. 아래 로그인 버튼을 누르면 바로 이어서 만들 수 있어.", "error");
+    setLog("샘플을 먼저 보고, 직접 만들고 싶으면 로그인해줘.", "error");
     updateRitualUi();
     return;
   }

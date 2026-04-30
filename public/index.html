@@ -44,36 +44,43 @@
               <p id="quotaText">오늘의 그림일기 1장 남음</p>
             </div>
 
-            <div class="field">
-              <label class="field__label">오늘 한 줄</label>
-              <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음" required></textarea>
+            <div class="locked-preview hidden" id="lockedPreview">
+              <strong>아래 입력은 로그인 후 열려.</strong>
+              <p>지금은 샘플 결과만 볼 수 있어. 로그인하면 네 OpenAI 키 없이 바로 직접 만들 수 있어.</p>
             </div>
 
-            <div class="field">
-              <label class="field__label">사진 한 장 붙이기 <em>선택</em></label>
-              <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
-            </div>
+            <div id="creationFields">
+              <div class="field">
+                <label class="field__label">오늘 한 줄</label>
+                <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음" required></textarea>
+              </div>
 
-            <div class="preview-box hidden" id="photoPreviewWrap">
-              <img id="photoPreview" alt="미리보기" />
-              <button type="button" class="btn--ghost" id="clearPhoto">지우기</button>
-            </div>
+              <div class="field">
+                <label class="field__label">사진 한 장 붙이기 <em>선택</em></label>
+                <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
+              </div>
 
-            <div class="field">
-              <label class="field__label">오늘 일기 분위기</label>
-              <div class="mood-group">
-                <label>
-                  <input type="radio" name="moodType" value="funny" checked />
-                  <span>웃긴 일기</span>
-                </label>
-                <label>
-                  <input type="radio" name="moodType" value="soft" />
-                  <span>찡한 일기</span>
-                </label>
-                <label>
-                  <input type="radio" name="moodType" value="kid" />
-                  <span>진짜 초딩 일기</span>
-                </label>
+              <div class="preview-box hidden" id="photoPreviewWrap">
+                <img id="photoPreview" alt="미리보기" />
+                <button type="button" class="btn--ghost" id="clearPhoto">지우기</button>
+              </div>
+
+              <div class="field">
+                <label class="field__label">오늘 일기 분위기</label>
+                <div class="mood-group">
+                  <label>
+                    <input type="radio" name="moodType" value="funny" checked />
+                    <span>웃긴 일기</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="moodType" value="soft" />
+                    <span>찡한 일기</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="moodType" value="kid" />
+                    <span>진짜 초딩 일기</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -82,7 +89,7 @@
                 <span class="auth-card__step">2</span>
                 <div>
                   <strong id="authTitle">만들 때만 로그인이 필요해</strong>
-                  <p id="authSubtitle">한 줄을 적고 분위기를 고른 뒤, 아래 계정 중 하나로 로그인하면 바로 생성돼. 네 OpenAI 키는 필요 없어.</p>
+                  <p id="authSubtitle">샘플을 보고 마음에 들면 아래 계정 중 하나로 로그인해. 네 OpenAI 키는 필요 없어.</p>
                 </div>
               </div>
               <div class="auth-actions" id="authActions">
@@ -151,6 +158,6 @@
     </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260430-login-state"></script>
+  <script type="module" src="/app.js?v=20260430-disabled-form"></script>
 </body>
 </html>
