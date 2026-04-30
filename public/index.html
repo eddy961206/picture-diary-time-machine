@@ -77,17 +77,19 @@
               </div>
             </div>
 
-            <div class="actions">
-              <button type="submit" class="btn btn--primary" id="generateBtn">오늘의 그림일기 만들기</button>
-              <button type="button" class="btn btn--ghost hidden" id="eraserChance">선생님 몰래 다시 쓰기</button>
-            </div>
-
             <div class="auth-card" id="authCard">
-              <div class="auth-actions" id="authActions" style="margin-top: 24px; display: flex; gap: 8px;">
+              <strong id="authTitle">만들 때만 로그인이 필요해</strong>
+              <p id="authSubtitle">어떤 사이트인지 먼저 둘러봐도 돼. 네 OpenAI 키는 필요 없고, 로그인하면 오늘 한 장을 바로 만들 수 있어.</p>
+              <div class="auth-actions" id="authActions">
                 <button type="button" class="share-btn" data-auth-provider="google">Google</button>
                 <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
                 <button type="button" class="share-btn" data-auth-provider="custom:naver">Naver</button>
               </div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn btn--primary" id="generateBtn">오늘의 그림일기 만들기</button>
+              <button type="button" class="btn btn--ghost hidden" id="eraserChance">선생님 몰래 다시 쓰기</button>
             </div>
           </form>
         </section>
@@ -144,6 +146,6 @@
     </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260430-security"></script>
+  <script type="module" src="/app.js?v=20260430-login-copy"></script>
 </body>
 </html>

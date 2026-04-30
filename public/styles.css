@@ -290,6 +290,25 @@ textarea:focus {
 /* Auth Card & Buttons */
 .auth-card {
   margin-top: 24px;
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid #ffe0c8;
+  border-radius: var(--radius-sm);
+  background: #fff7f0;
+}
+
+.auth-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.auth-card p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .auth-actions {

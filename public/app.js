@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-security";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-login-copy";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -186,7 +186,7 @@ function setAuthUi(message = "") {
 
   if (!supabase) {
     setText(authTitle, "Supabase 설정이 필요해");
-    setText(authSubtitle, "로그인 없이도 오늘 한 장은 만들 수 있어. 저장만 나중에 켜질 거야.");
+    setText(authSubtitle, "로그인 설정이 켜져야 그림일기를 만들 수 있어. 지금은 사이트 미리보기만 가능해.");
     setProviderBadge(null);
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
@@ -204,11 +204,11 @@ function setAuthUi(message = "") {
   if (currentUser) {
     const provider = getUserProvider(currentUser);
     setText(authTitle, currentUser.user_metadata?.full_name || currentUser.email || "로그인됨");
-    setText(authSubtitle, displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 오늘 숙제를 내 방학숙제장에 붙일 수 있어.`);
+    setText(authSubtitle, displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 이제 오늘의 그림일기를 만들 수 있어.`);
     setText(diaryBookHint, "날짜별로 제출한 그림일기를 다시 볼 수 있어.");
   } else {
-    setText(authTitle, "로그인하면 방학숙제장이 이어져");
-    setText(authSubtitle, displayMessage || "Google, KakaoTalk, Naver 계정으로 오늘 일기를 모아둘 수 있어.");
+    setText(authTitle, "만들 때만 로그인이 필요해");
+    setText(authSubtitle, displayMessage || "어떤 사이트인지 먼저 둘러봐도 돼. 네 OpenAI 키는 필요 없고, 로그인하면 오늘 한 장을 바로 만들 수 있어.");
     setText(diaryBookHint, "로그인하면 날짜별로 전에 냈던 숙제를 다시 볼 수 있어.");
   }
   updateRitualUi();
