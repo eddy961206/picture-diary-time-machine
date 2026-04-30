@@ -35,8 +35,12 @@ const stampButtons = document.querySelectorAll("[data-stamp]");
 const quotaCard = document.querySelector("#quotaCard");
 const quotaTitle = document.querySelector("#quotaTitle");
 const quotaText = document.querySelector("#quotaText");
+const quotaStatus = document.querySelector("#quotaStatus");
 const streakTitle = document.querySelector("#streakTitle");
 const streakText = document.querySelector("#streakText");
+const stepWrite = document.querySelector("#stepWrite");
+const stepGenerate = document.querySelector("#stepGenerate");
+const stepSave = document.querySelector("#stepSave");
 const authActions = document.querySelector("#authActions");
 const authProviderBadge = document.querySelector("#authProviderBadge");
 const authButtons = document.querySelectorAll("[data-auth-provider]");
@@ -50,6 +54,8 @@ const bookHint = document.querySelector("#bookHint");
 const copyInviteCode = document.querySelector("#copyInviteCode");
 const createBookForm = document.querySelector("#createBookForm");
 const joinBookForm = document.querySelector("#joinBookForm");
+const currentBookLabel = document.querySelector("#currentBookLabel");
+const saveHint = document.querySelector("#saveHint");
 
 let referenceImageDataUrl = "";
 let currentImageUrl = resultImage.getAttribute("src") || "/sample-output.png";
@@ -86,6 +92,40 @@ function setLog(message, tone = "normal") {
   log.dataset.tone = tone;
 }
 
+function setFormControlsDisabled(targetForm, disabled) {
+  targetForm?.querySelectorAll("input, button").forEach((control) => {
+    control.disabled = disabled;
+  });
+}
+
+function setStep(activeStep) {
+  [
+    [stepWrite, "write"],
+    [stepGenerate, "generate"],
+    [stepSave, "save"],
+  ].forEach(([element, step]) => {
+    element?.classList.toggle("active", step === activeStep);
+    element?.classList.toggle("done", step !== activeStep && (
+      (activeStep === "generate" && step === "write")
+      || (activeStep === "save" && step !== "save")
+    ));
+  });
+}
+
+function updateSaveHint() {
+  if (!saveHint) return;
+  if (!currentUser) {
+    saveHint.textContent = "로그인하면 만든 그림일기를 일기장에 붙일 수 있어.";
+  } else if (currentImageUrl.startsWith("data:")) {
+    const book = selectedBook();
+    saveHint.textContent = book
+      ? `"${book.name}"에 붙일 준비가 됐어.`
+      : "나만 보는 일기장에 붙일 준비가 됐어.";
+  } else {
+    saveHint.textContent = "직접 만든 뒤 일기장에 붙일 수 있어.";
+  }
+}
+
 function remainingGenerations() {
   return getRemainingGenerations(getTodayRitualState());
 }
@@ -102,18 +142,23 @@ function updateRitualUi() {
   if (authUnavailable) {
     quotaTitle.textContent = "샘플로 먼저 둘러봐";
     quotaText.textContent = "직접 만들기 설정이 아직 준비되지 않았어.";
+    quotaStatus.textContent = "준비 중";
   } else if (needsLogin) {
     quotaTitle.textContent = "샘플로 먼저 둘러봐";
     quotaText.textContent = "직접 만들기는 로그인 후 열려.";
+    quotaStatus.textContent = "로그인 필요";
   } else if (state.generations === 0) {
     quotaTitle.textContent = "오늘의 일기장";
     quotaText.textContent = "오늘의 숙제 1번 남음";
+    quotaStatus.textContent = "1번 남음";
   } else if (state.generations === 1) {
     quotaTitle.textContent = "지우개 찬스!";
     quotaText.textContent = "마지막으로 한 번 더 쓸 수 있어.";
+    quotaStatus.textContent = "1번 남음";
   } else {
     quotaTitle.textContent = "오늘 숙제 끝!";
     quotaText.textContent = "내일 또 새로운 일기를 써보자.";
+    quotaStatus.textContent = "완료";
   }
 
   quotaCard.dataset.state = needsLogin ? "login" : locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
@@ -129,6 +174,7 @@ function updateRitualUi() {
   streakText.textContent = state.streak
     ? `${state.streak}일째 일기장을 채우는 중이야.`
     : "오늘 한 장을 내면 기록이 시작돼.";
+  updateSaveHint();
 }
 
 function getUserProvider(user) {
@@ -178,13 +224,17 @@ function updateBookHint() {
   if (!bookHint || !copyInviteCode) return;
   const book = selectedBook();
   if (!book) {
-    bookHint.textContent = "기본은 나만 보는 일기장이야.";
+    bookHint.textContent = "나만 보는 일기장에 저장돼.";
     copyInviteCode.classList.add("hidden");
+    if (currentBookLabel) currentBookLabel.textContent = "나만 보기";
+    updateSaveHint();
     return;
   }
 
   bookHint.textContent = `초대 코드 ${book.invite_code}로 같이 볼 사람을 불러올 수 있어.`;
   copyInviteCode.classList.remove("hidden");
+  if (currentBookLabel) currentBookLabel.textContent = book.name;
+  updateSaveHint();
 }
 
 async function loadDiaryBooks() {
@@ -260,6 +310,7 @@ function setAuthUi() {
   saveDiary.disabled = !currentUser || !currentImageUrl.startsWith("data:");
   setProviderBadge(currentUser);
   updateRitualUi();
+  updateSaveHint();
 }
 
 function setCurrentImage(url, format = "png") {
@@ -270,6 +321,7 @@ function setCurrentImage(url, format = "png") {
   downloadLink.href = currentImageUrl;
   downloadLink.download = currentImageFilename;
   downloadLink.classList.remove("disabled");
+  setStep(currentImageUrl.startsWith("data:") ? "save" : "write");
   setAuthUi();
 }
 
@@ -563,6 +615,7 @@ saveDiary.addEventListener("click", async () => {
 
   if (upload.error) {
     saveDiary.disabled = false;
+    updateSaveHint();
     setLog("일기를 붙이지 못했어.", "error");
     return;
   }
@@ -570,6 +623,7 @@ saveDiary.addEventListener("click", async () => {
   const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from("diary-images").createSignedUrl(path, 60 * 60);
   if (signedUrlError) {
     saveDiary.disabled = false;
+    updateSaveHint();
     setLog("일기 링크를 만들지 못했어.", "error");
     return;
   }
@@ -590,6 +644,7 @@ saveDiary.addEventListener("click", async () => {
   });
 
   saveDiary.disabled = false;
+  updateSaveHint();
   if (insert.error) {
     setLog("일기를 저장하지 못했어.", "error");
     return;
@@ -597,6 +652,7 @@ saveDiary.addEventListener("click", async () => {
 
   setLog("일기장에 쾅 붙였어! 참 잘했어요.");
   setCurrentImage(signedUrlData.signedUrl, currentImageFormat);
+  setStep("write");
   await loadDiaryEntries();
 });
 
@@ -626,6 +682,8 @@ createBookForm?.addEventListener("submit", async (event) => {
     return;
   }
 
+  setFormControlsDisabled(createBookForm, true);
+  setLog("공유 일기장을 만드는 중이야...");
   const bookId = crypto.randomUUID();
   const bookInsert = await supabase
     .from("diary_books")
@@ -637,6 +695,7 @@ createBookForm?.addEventListener("submit", async (event) => {
     });
 
   if (bookInsert.error) {
+    setFormControlsDisabled(createBookForm, false);
     setLog("공유 일기장을 만들지 못했어.", "error");
     return;
   }
@@ -648,11 +707,13 @@ createBookForm?.addEventListener("submit", async (event) => {
   });
 
   if (memberInsert.error) {
+    setFormControlsDisabled(createBookForm, false);
     setLog("일기장 멤버 등록에 실패했어.", "error");
     return;
   }
 
   createBookForm.reset();
+  setFormControlsDisabled(createBookForm, false);
   currentBookId = bookId;
   await loadDiaryBooks();
   await loadDiaryEntries();
@@ -674,16 +735,20 @@ joinBookForm?.addEventListener("submit", async (event) => {
     return;
   }
 
+  setFormControlsDisabled(joinBookForm, true);
+  setLog("초대 코드를 확인하는 중이야...");
   const { data, error } = await supabase.rpc("join_diary_book_by_code", {
     invite_code_input: inviteCode,
   });
 
   if (error || !data) {
+    setFormControlsDisabled(joinBookForm, false);
     setLog("초대 코드로 일기장을 찾지 못했어.", "error");
     return;
   }
 
   joinBookForm.reset();
+  setFormControlsDisabled(joinBookForm, false);
   currentBookId = data;
   await loadDiaryBooks();
   await loadDiaryEntries();
@@ -705,6 +770,7 @@ form.addEventListener("submit", async (event) => {
   if (!validateRequiredInputs()) return;
 
   loading.classList.remove("hidden");
+  setStep("generate");
   generateBtn.disabled = true;
   eraserChance.disabled = true;
   loadingText.textContent = LOADING_LINES[getTodayRitualState().generations % LOADING_LINES.length];
@@ -728,6 +794,7 @@ form.addEventListener("submit", async (event) => {
     updateRitualUi();
     setLog("일기장을 완성했어! 마음에 들어?");
   } catch (error) {
+    setStep("write");
     setLog("일기가 번졌나 봐. 다시 한 번 써볼까?", "error");
   } finally {
     loading.classList.add("hidden");

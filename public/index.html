@@ -9,10 +9,10 @@
 <body>
   <aside class="sidebar">
     <a href="/" class="sidebar__logo">그림일기장</a>
-    <nav class="nav">
+    <nav class="nav" aria-label="주요 메뉴">
       <a href="#" class="nav__item active">일기 쓰기</a>
       <a href="#diaryBook" class="nav__item">내 일기장</a>
-      <a href="#classroom" class="nav__item">우리 반</a>
+      <a href="#classroom" class="nav__item">공유 일기장</a>
     </nav>
   </aside>
 
@@ -38,16 +38,25 @@
             <h2>오늘 뭐 했어?</h2>
             <p class="section-intro">별거 없는 하루라도 괜찮아. 숙제장에 한 줄만 남겨보자.</p>
 
+            <ol class="step-list" aria-label="그림일기 진행 순서">
+              <li class="step-list__item active" id="stepWrite"><span>1</span>쓰기</li>
+              <li class="step-list__item" id="stepGenerate"><span>2</span>그리기</li>
+              <li class="step-list__item" id="stepSave"><span>3</span>붙이기</li>
+            </ol>
+
             <div class="quota-card" id="quotaCard">
-              <strong id="quotaTitle">오늘의 일기장</strong>
-              <p id="quotaText">오늘의 숙제 1번 남음</p>
+              <div>
+                <strong id="quotaTitle">오늘의 일기장</strong>
+                <p id="quotaText">오늘의 숙제 1번 남음</p>
+              </div>
+              <span class="quota-card__status" id="quotaStatus">1번 남음</span>
             </div>
 
             <div class="book-card hidden" id="bookCard">
               <div class="book-card__header">
                 <div>
-                  <strong>어느 일기장에 붙일까?</strong>
-                  <p id="bookHint">기본은 나만 보는 일기장이야.</p>
+                  <strong>저장 위치</strong>
+                  <p id="bookHint">나만 보는 일기장에 저장돼.</p>
                 </div>
                 <button type="button" class="btn--ghost mini" id="copyInviteCode">초대 코드 복사</button>
               </div>
@@ -55,7 +64,9 @@
               <select id="bookSelect" name="bookSelect">
                 <option value="">나만 보기</option>
               </select>
-              <div class="book-actions">
+              <details class="book-more" id="bookMore">
+                <summary>공유 일기장 만들기/들어가기</summary>
+                <div class="book-actions">
                 <form class="book-inline-form" id="createBookForm">
                   <input type="text" name="bookName" maxlength="30" placeholder="공유 일기장 이름" />
                   <button type="submit" class="share-btn">만들기</button>
@@ -64,7 +75,8 @@
                   <input type="text" name="inviteCode" maxlength="12" placeholder="초대 코드" />
                   <button type="submit" class="share-btn">들어가기</button>
                 </form>
-              </div>
+                </div>
+              </details>
             </div>
 
             <div class="field">
@@ -106,8 +118,9 @@
             </div>
 
             <div class="auth-card" id="authCard">
-              <p style="font-size: 13px; color: var(--muted); margin-bottom: 8px;">일기장을 잃어버리지 않으려면?</p>
-              <div class="auth-actions" id="authActions" style="display: flex; gap: 8px;">
+              <strong>로그인하면 직접 만들 수 있어</strong>
+              <p>샘플 결과를 보고 마음에 들면 로그인해. 네 OpenAI 키는 필요 없어.</p>
+              <div class="auth-actions" id="authActions">
                 <button type="button" class="share-btn" data-auth-provider="google">Google</button>
                 <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
                 <button type="button" class="share-btn" data-auth-provider="custom:naver">Naver</button>
@@ -131,6 +144,7 @@
               <a class="btn btn--ghost" id="downloadLink" href="#" download>일기 가져가기</a>
               <button type="button" class="btn btn--primary" id="saveDiary" style="flex: 1;">일기장에 붙이기</button>
             </div>
+            <p class="save-hint" id="saveHint">샘플을 보는 중이야. 직접 만든 뒤 저장할 수 있어.</p>
 
             <div class="stamps">
               <button type="button" class="stamp" data-stamp="참 잘했어요">참 잘했어요</button>
@@ -154,7 +168,10 @@
       </div>
 
       <section class="diary-book card" id="diaryBook" style="margin-top: 40px;">
-        <h2>내 방학숙제장</h2>
+        <div class="section-heading">
+          <h2>내 방학숙제장</h2>
+          <span id="currentBookLabel">나만 보기</span>
+        </div>
         <div class="diary-list" id="diaryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
           <div class="empty-state">아직 모은 일기가 없어.</div>
         </div>

@@ -229,6 +229,15 @@ textarea:focus {
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
+textarea:disabled,
+input:disabled,
+select:disabled {
+  background: #ece8e1;
+  color: #9a9186;
+  border-color: #ded8cf;
+  cursor: not-allowed;
+}
+
 .mood-group {
   display: flex;
   gap: 12px;
@@ -263,7 +272,55 @@ textarea:focus {
 }
 
 /* Quota Card Base */
+.step-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.step-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 42px;
+  border-radius: 999px;
+  background: #f3f1ed;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.step-list__item span {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font-size: 12px;
+}
+
+.step-list__item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.step-list__item.done {
+  background: #edf7e6;
+  color: #4f8b3d;
+}
+
 .quota-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-radius: var(--radius-sm);
   padding: 20px;
   margin-bottom: 24px;
@@ -279,6 +336,17 @@ textarea:focus {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
+}
+
+.quota-card__status {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--ink);
+  white-space: nowrap;
 }
 
 /* Quota Card States */
@@ -392,6 +460,17 @@ textarea:focus {
   display: grid;
   gap: 8px;
   margin-top: 12px;
+}
+
+.book-more {
+  margin-top: 12px;
+}
+
+.book-more summary {
+  cursor: pointer;
+  color: #4f8b3d;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .book-inline-form {
@@ -681,13 +760,49 @@ textarea:focus {
 
 .share-btn {
   flex: 1;
-  padding: 10px;
+  min-height: 40px;
+  padding: 10px 14px;
   background: #fff;
   border: 1px solid #eee;
   border-radius: 99px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.share-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.save-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.section-heading span {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 900;
 }
 
 /* Auth & Status */
@@ -718,4 +833,50 @@ textarea:focus {
   .main { padding: 16px; }
   .brand-name { font-size: 48px; }
   .page-header { height: 240px; }
+}
+
+@media (max-width: 560px) {
+  .card {
+    padding: 22px;
+  }
+
+  .page-header {
+    height: 190px;
+    margin-bottom: 24px;
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .brand-name {
+    font-size: 38px;
+  }
+
+  h2 {
+    font-size: 26px;
+  }
+
+  .step-list {
+    grid-template-columns: 1fr;
+  }
+
+  .quota-card,
+  .book-card__header,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mood-group,
+  .btn-group,
+  .auth-actions,
+  .shares {
+    flex-direction: column;
+  }
+
+  .book-inline-form {
+    grid-template-columns: 1fr;
+  }
 }
