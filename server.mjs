@@ -2,7 +2,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { handleKakaoCallback, handleKakaoLogin } from "./api/kakao-auth.mjs";
+import { handleKakaoCallback, handleKakaoLogin, sendKakaoSession } from "./api/kakao-auth.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +28,9 @@ loadDotEnv();
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const ALLOW_UNAUTHENTICATED_GENERATE = process.env.ALLOW_UNAUTHENTICATED_GENERATE === "true";
 const MAX_JSON_BYTES = 14 * 1024 * 1024;
 
 const mimeTypes = new Map([
@@ -268,6 +271,10 @@ async function handleGenerate(req, res) {
       return;
     }
 
+    if (!ALLOW_UNAUTHENTICATED_GENERATE) {
+      await requireSupabaseUser(req);
+    }
+
     const input = await readJson(req);
     validateRequiredInput(input);
     const size = normalizeSize(input.size);
@@ -288,7 +295,36 @@ async function handleGenerate(req, res) {
       mode: referenceImage ? "reference-image" : "text-only",
     });
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message || "알 수 없는 오류가 났어." });
+    sendJson(res, error.statusCode || 500, { ok: false, error: error.message || "알 수 없는 오류가 났어." });
+  }
+}
+
+async function requireSupabaseUser(req) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    const error = new Error("그림일기 생성에는 Supabase 로그인 설정이 필요해.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const authorization = String(req.headers.authorization || "");
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    const error = new Error("로그인해야 그림일기를 만들 수 있어.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${match[1]}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = new Error("로그인이 만료됐어. 다시 로그인해줘.");
+    error.statusCode = 401;
+    throw error;
   }
 }
 
@@ -327,6 +363,7 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       supabaseUrl: process.env.SUPABASE_URL || "",
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+      authRequiredForGenerate: !ALLOW_UNAUTHENTICATED_GENERATE,
     });
     return;
   }
@@ -336,6 +373,7 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       hasApiKey: Boolean(OPENAI_API_KEY),
       imageModel: OPENAI_IMAGE_MODEL,
+      authRequiredForGenerate: !ALLOW_UNAUTHENTICATED_GENERATE,
     });
     return;
   }
@@ -347,6 +385,11 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "GET" && req.url.startsWith("/api/kakao-callback")) {
     await handleKakaoCallback(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/kakao-session")) {
+    sendKakaoSession(req, res);
     return;
   }
 

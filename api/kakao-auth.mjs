@@ -1,7 +1,9 @@
 import crypto from "node:crypto";
 
 const COOKIE_NAME = "kakao_oauth_state";
+const TOKEN_COOKIE_NAME = "kakao_oidc_token";
 const COOKIE_MAX_AGE_SECONDS = 10 * 60;
+const TOKEN_COOKIE_MAX_AGE_SECONDS = 60;
 const KAKAO_AUTHORIZE_URL = "https://kauth.kakao.com/oauth/authorize";
 const KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token";
 const KAKAO_SCOPES = "openid profile_nickname";
@@ -93,6 +95,16 @@ function clearCookie(origin) {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
+function buildTokenCookie(value, origin) {
+  const secure = origin.startsWith("https://") ? "; Secure" : "";
+  return `${TOKEN_COOKIE_NAME}=${encodeURIComponent(value)}; Path=/api/kakao-session; HttpOnly; SameSite=Lax; Max-Age=${TOKEN_COOKIE_MAX_AGE_SECONDS}${secure}`;
+}
+
+function clearTokenCookie(origin) {
+  const secure = origin.startsWith("https://") ? "; Secure" : "";
+  return `${TOKEN_COOKIE_NAME}=; Path=/api/kakao-session; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
+}
+
 function redirect(res, status, url, headers = {}) {
   res.writeHead(status, {
     Location: url,
@@ -176,14 +188,22 @@ export async function exchangeKakaoCodeForTokenSet(req, code) {
     throw new Error("카카오에서 id_token을 받지 못했어. OpenID Connect와 openid scope를 확인해야 해.");
   }
 
-  if (!payload.access_token) {
-    throw new Error("카카오에서 access_token을 받지 못했어.");
-  }
-
   return {
-    accessToken: payload.access_token,
     idToken: payload.id_token,
   };
+}
+
+export function sendKakaoSession(req, res) {
+  const origin = getRequestOrigin(req);
+  const idToken = parseCookies(req)[TOKEN_COOKIE_NAME] || "";
+  res.writeHead(idToken ? 200 : 401, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Set-Cookie": clearTokenCookie(origin),
+  });
+  res.end(JSON.stringify(idToken
+    ? { ok: true, idToken }
+    : { ok: false, error: "카카오 로그인 토큰을 찾지 못했어. 다시 로그인해줘." }));
 }
 
 export async function handleKakaoCallback(req, res) {
@@ -201,15 +221,15 @@ export async function handleKakaoCallback(req, res) {
     const { state } = readStateCookie(req);
     if (state !== returnedState) throw new Error("카카오 로그인 state가 맞지 않아.");
 
-    const { accessToken, idToken } = await exchangeKakaoCodeForTokenSet(req, code);
+    const { idToken } = await exchangeKakaoCodeForTokenSet(req, code);
     const destination = new URL("/", origin);
-    destination.hash = new URLSearchParams({
-      kakao_access_token: accessToken,
-      kakao_id_token: idToken,
-    }).toString();
+    destination.searchParams.set("kakao_login", "1");
 
     redirect(res, 302, destination.toString(), {
-      "Set-Cookie": clearCookie(origin),
+      "Set-Cookie": [
+        clearCookie(origin),
+        buildTokenCookie(idToken, origin),
+      ],
     });
   } catch (error) {
     redirectWithError(req, res, error.message || "카카오 로그인 처리에 실패했어.");

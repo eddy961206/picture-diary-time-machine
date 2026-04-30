@@ -10,6 +10,6 @@ export default async function handler(req, res) {
     const result = await generatePayload(req);
     sendJson(res, result.status, result.payload);
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message || "알 수 없는 오류가 났어." });
+    sendJson(res, error.statusCode || 500, { ok: false, error: error.message || "알 수 없는 오류가 났어." });
   }
 }

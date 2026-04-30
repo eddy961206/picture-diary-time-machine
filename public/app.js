@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-security";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -58,6 +58,7 @@ let currentUser = null;
 let lastGeneratedInput = null;
 let authNotice = "";
 let currentStamp = "";
+let authRequiredForGenerate = false;
 
 
 function formData() {
@@ -90,12 +91,17 @@ function remainingGenerations() {
   return getRemainingGenerations(getTodayRitualState());
 }
 
+function needsLoginForGeneration() {
+  return authRequiredForGenerate && !currentUser;
+}
+
 function updateRitualUi() {
   const state = getTodayRitualState();
   writeRitualState(state);
   const remaining = getRemainingGenerations(state);
   const locked = remaining <= 0;
   const hasUsedFirst = state.generations > 0;
+  const needsLogin = needsLoginForGeneration();
 
   if (state.generations === 0) {
     quotaTitle.textContent = "오늘 일기는 아직 안 냈어.";
@@ -109,10 +115,10 @@ function updateRitualUi() {
   }
 
   quotaCard.dataset.state = locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
-  generateBtn.disabled = locked;
-  generateBtn.textContent = hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
+  generateBtn.disabled = locked || needsLogin;
+  generateBtn.textContent = needsLogin ? "로그인하고 그림일기 만들기" : hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
-  eraserChance.disabled = locked;
+  eraserChance.disabled = locked || needsLogin;
   form.elements.diary.disabled = locked;
   photoInput.disabled = locked;
   form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
@@ -145,16 +151,22 @@ function setProviderBadge(user) {
 }
 
 async function completeKakaoLoginFromHash() {
-  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const accessToken = params.get("kakao_access_token");
-  const idToken = params.get("kakao_id_token");
-  if (!idToken) return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("kakao_login") !== "1") return false;
+
+  const tokenResponse = await fetch("/api/kakao-session", { cache: "no-store" });
+  const tokenPayload = await tokenResponse.json().catch(() => ({}));
+  if (!tokenPayload.ok || !tokenPayload.idToken) {
+    authNotice = tokenPayload.error || "KakaoTalk 로그인 토큰을 받지 못했어.";
+    setAuthUi(authNotice);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return true;
+  }
 
   window.history.replaceState({}, document.title, window.location.pathname);
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "kakao",
-    token: idToken,
-    access_token: accessToken || undefined,
+    token: tokenPayload.idToken,
   });
 
   if (error) {
@@ -179,6 +191,7 @@ function setAuthUi(message = "") {
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
     setText(diaryBookHint, "로그인하면 날짜별 숙제를 모아볼 수 있어.");
+    updateRitualUi();
     return;
   }
 
@@ -198,6 +211,7 @@ function setAuthUi(message = "") {
     setText(authSubtitle, displayMessage || "Google, KakaoTalk, Naver 계정으로 오늘 일기를 모아둘 수 있어.");
     setText(diaryBookHint, "로그인하면 날짜별로 전에 냈던 숙제를 다시 볼 수 있어.");
   }
+  updateRitualUi();
 }
 
 function setCurrentImage(url, format = "png") {
@@ -249,7 +263,7 @@ async function checkHealth() {
     const res = await fetch("/api/health");
     const json = await res.json();
     if (json.hasApiKey) {
-      statusEl.textContent = "방학숙제장 준비됨";
+      statusEl.textContent = json.authRequiredForGenerate ? "로그인 후 숙제 제출 가능" : "방학숙제장 준비됨";
     } else {
       statusEl.textContent = "API 키 없음 · 오늘 숙제 제출은 잠시 쉬는 중";
     }
@@ -315,7 +329,7 @@ async function loadDiaryEntries() {
 
   const { data, error } = await supabase
     .from("diary_entries")
-    .select("id, diary_date, weather, title, place, image_url, image_format, created_at")
+    .select("id, diary_date, weather, title, place, image_url, image_path, image_format, created_at")
     .order("created_at", { ascending: false })
     .limit(60);
 
@@ -324,11 +338,39 @@ async function loadDiaryEntries() {
     return;
   }
 
-  renderDiaryEntries(data || []);
+  const entries = await withSignedImageUrls(data || []);
+  renderDiaryEntries(entries);
+}
+
+async function withSignedImageUrls(entries) {
+  return Promise.all(entries.map(async (entry) => {
+    const imagePath = entry.image_path || getStoredImagePath(entry.image_url);
+    if (!imagePath) return entry;
+
+    const { data, error } = await supabase.storage.from("diary-images").createSignedUrl(imagePath, 60 * 60);
+    if (error) return entry;
+    return { ...entry, image_url: data.signedUrl };
+  }));
+}
+
+function getStoredImagePath(value) {
+  const imageUrl = String(value || "");
+  if (!imageUrl) return "";
+  if (!imageUrl.startsWith("http")) return imageUrl;
+
+  try {
+    const url = new URL(imageUrl);
+    const marker = "/storage/v1/object/public/diary-images/";
+    const index = url.pathname.indexOf(marker);
+    return index === -1 ? "" : decodeURIComponent(url.pathname.slice(index + marker.length));
+  } catch {
+    return "";
+  }
 }
 
 async function initAuth() {
   const config = await getSupabaseConfig();
+  authRequiredForGenerate = config.authRequiredForGenerate;
   if (!config.configured) {
     setAuthUi();
     renderDiaryEntries([]);
@@ -381,6 +423,12 @@ photoInput.addEventListener("change", async () => {
   photoPreviewWrap.classList.remove("hidden");
   setLog("사진 붙였어. 없어도 되지만, 있으면 오늘 장면을 조금 더 기억해볼게.");
 });
+
+async function getAccessToken() {
+  if (!supabase) return "";
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || "";
+}
 
 clearPhoto.addEventListener("click", async () => {
   photoInput.value = "";
@@ -496,7 +544,13 @@ saveDiary.addEventListener("click", async () => {
     return;
   }
 
-  const { data: publicUrlData } = supabase.storage.from("diary-images").getPublicUrl(path);
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage.from("diary-images").createSignedUrl(path, 60 * 60);
+  if (signedUrlError) {
+    saveDiary.disabled = false;
+    setLog(`이미지 링크 생성 실패: ${signedUrlError.message}`, "error");
+    return;
+  }
+
   const insert = await supabase.from("diary_entries").insert({
     user_id: currentUser.id,
     diary_date: data.date || getSeoulDateKey(),
@@ -506,7 +560,8 @@ saveDiary.addEventListener("click", async () => {
     place: data.place || data.diary || "오늘 있었던 일",
     diary_text: data.diary || "",
     detail: currentStamp || data.moodType || "",
-    image_url: publicUrlData.publicUrl,
+    image_url: path,
+    image_path: path,
     image_format: currentImageFormat,
   });
 
@@ -517,6 +572,7 @@ saveDiary.addEventListener("click", async () => {
   }
 
   setLog("방학숙제장에 붙였어.");
+  setCurrentImage(signedUrlData.signedUrl, currentImageFormat);
   await loadDiaryEntries();
 });
 
@@ -525,6 +581,11 @@ form.addEventListener("submit", async (event) => {
   if (remainingGenerations() <= 0) {
     updateRitualUi();
     setLog("오늘 일기는 다 냈어. 방학숙제는 하루에 한 장씩.");
+    return;
+  }
+  if (needsLoginForGeneration()) {
+    setLog("로그인해야 그림일기를 만들 수 있어.", "error");
+    updateRitualUi();
     return;
   }
   if (!validateRequiredInputs()) return;
@@ -536,9 +597,13 @@ form.addEventListener("submit", async (event) => {
   setLog(getTodayRitualState().generations ? "선생님 몰래 다시 그리는 중이야." : "오늘 하루를 숙제장에 붙이는 중이야.");
 
   try {
+    const accessToken = await getAccessToken();
     const res = await fetch("/api/generate", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify(formData()),
     });
     const json = await res.json();

@@ -1,5 +1,8 @@
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "";
+const ALLOW_UNAUTHENTICATED_GENERATE = process.env.ALLOW_UNAUTHENTICATED_GENERATE === "true";
 const MAX_JSON_BYTES = 14 * 1024 * 1024;
 
 export function sendJson(res, status, payload) {
@@ -219,6 +222,7 @@ export function healthPayload() {
     ok: true,
     hasApiKey: Boolean(OPENAI_API_KEY),
     imageModel: OPENAI_IMAGE_MODEL,
+    authRequiredForGenerate: !ALLOW_UNAUTHENTICATED_GENERATE,
   };
 }
 
@@ -238,6 +242,10 @@ export async function generatePayload(req) {
         error: "OPENAI_API_KEY가 없어. Vercel 환경 변수에 키를 넣고 다시 배포해줘.",
       },
     };
+  }
+
+  if (!ALLOW_UNAUTHENTICATED_GENERATE) {
+    await requireSupabaseUser(req);
   }
 
   const input = await readJson(req);
@@ -262,4 +270,33 @@ export async function generatePayload(req) {
       mode: referenceImage ? "reference-image" : "text-only",
     },
   };
+}
+
+async function requireSupabaseUser(req) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    const error = new Error("그림일기 생성에는 Supabase 로그인 설정이 필요해.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const authorization = String(req.headers.authorization || "");
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    const error = new Error("로그인해야 그림일기를 만들 수 있어.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const response = await fetch(`${SUPABASE_URL.replace(/\/$/, "")}/auth/v1/user`, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${match[1]}`,
+    },
+  });
+
+  if (!response.ok) {
+    const error = new Error("로그인이 만료됐어. 다시 로그인해줘.");
+    error.statusCode = 401;
+    throw error;
+  }
 }

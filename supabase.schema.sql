@@ -9,10 +9,14 @@ create table if not exists public.diary_entries (
   diary_text text not null,
   detail text not null,
   image_url text not null,
+  image_path text,
   image_format text not null default 'png',
   prompt text,
   created_at timestamptz not null default now()
 );
+
+alter table public.diary_entries
+  add column if not exists image_path text;
 
 create index if not exists diary_entries_user_created_idx
   on public.diary_entries (user_id, created_at desc);
@@ -38,8 +42,12 @@ create policy "Users can delete own diary entries"
   using (auth.uid() = user_id);
 
 insert into storage.buckets (id, name, public)
-values ('diary-images', 'diary-images', true)
+values ('diary-images', 'diary-images', false)
 on conflict (id) do nothing;
+
+update storage.buckets
+set public = false
+where id = 'diary-images';
 
 drop policy if exists "Users can upload own diary images" on storage.objects;
 create policy "Users can upload own diary images"
@@ -54,7 +62,10 @@ drop policy if exists "Users can read diary images" on storage.objects;
 create policy "Users can read diary images"
   on storage.objects
   for select
-  using (bucket_id = 'diary-images');
+  using (
+    bucket_id = 'diary-images'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
 
 drop policy if exists "Users can delete own diary images" on storage.objects;
 create policy "Users can delete own diary images"
@@ -64,4 +75,3 @@ create policy "Users can delete own diary images"
     bucket_id = 'diary-images'
     and auth.uid()::text = (storage.foldername(name))[1]
   );
-

@@ -5,6 +5,8 @@ import {
   buildKakaoAuthorizeUrl,
   exchangeKakaoCodeForTokenSet,
   getKakaoRedirectUri,
+  handleKakaoCallback,
+  sendKakaoSession,
 } from "../api/kakao-auth.mjs";
 
 function createRequest(path = "/api/kakao-login") {
@@ -42,7 +44,7 @@ test("buildKakaoAuthorizeUrl requests OIDC nickname scope without account_email"
   assert.equal(url.searchParams.get("scope").includes("profile_image"), false);
 });
 
-test("exchangeKakaoCodeForTokenSet returns both id token and access token", async () => {
+test("exchangeKakaoCodeForTokenSet returns only the id token needed by Supabase", async () => {
   process.env.KAKAO_REST_API_KEY = "test-client-id";
   process.env.KAKAO_CLIENT_SECRET = "test-client-secret";
 
@@ -65,11 +67,84 @@ test("exchangeKakaoCodeForTokenSet returns both id token and access token", asyn
     assert.deepEqual(
       await exchangeKakaoCodeForTokenSet(createRequest("/api/kakao-callback"), "test-code"),
       {
-        accessToken: "access-token",
         idToken: "id-token",
       },
     );
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("sendKakaoSession returns the transient id token and clears the cookie", () => {
+  const chunks = [];
+  const res = {
+    writeHead(status, headers) {
+      this.status = status;
+      this.headers = headers;
+    },
+    end(body) {
+      chunks.push(body);
+    },
+  };
+
+  sendKakaoSession({
+    ...createRequest("/api/kakao-session"),
+    headers: {
+      ...createRequest().headers,
+      cookie: "kakao_oidc_token=id-token",
+    },
+  }, res);
+
+  assert.equal(res.status, 200);
+  assert.match(res.headers["Set-Cookie"], /Max-Age=0/);
+  assert.deepEqual(JSON.parse(chunks.join("")), { ok: true, idToken: "id-token" });
+});
+
+test("handleKakaoCallback redirects without putting provider tokens in the URL", async () => {
+  process.env.KAKAO_REST_API_KEY = "test-client-id";
+  process.env.KAKAO_STATE_SECRET = "state-secret";
+
+  const loginRes = {
+    writeHead(status, headers) {
+      this.status = status;
+      this.headers = headers;
+    },
+    end() {},
+  };
+  const { handleKakaoLogin } = await import("../api/kakao-auth.mjs");
+  await handleKakaoLogin(createRequest("/api/kakao-login"), loginRes);
+
+  const authorizeUrl = new URL(loginRes.headers.Location);
+  const state = authorizeUrl.searchParams.get("state");
+  const stateCookie = Array.isArray(loginRes.headers["Set-Cookie"])
+    ? loginRes.headers["Set-Cookie"][0]
+    : loginRes.headers["Set-Cookie"];
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ id_token: "id-token" });
+
+  const callbackRes = {
+    writeHead(status, headers) {
+      this.status = status;
+      this.headers = headers;
+    },
+    end() {},
+  };
+
+  try {
+    await handleKakaoCallback({
+      ...createRequest(`/api/kakao-callback?code=test-code&state=${state}`),
+      headers: {
+        ...createRequest().headers,
+        cookie: stateCookie.split(";")[0],
+      },
+    }, callbackRes);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(callbackRes.status, 302);
+  assert.equal(new URL(callbackRes.headers.Location).hash, "");
+  assert.equal(new URL(callbackRes.headers.Location).searchParams.get("kakao_login"), "1");
+  assert.match(callbackRes.headers["Set-Cookie"].join("\n"), /kakao_oidc_token=/);
 });

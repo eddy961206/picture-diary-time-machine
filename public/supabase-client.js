@@ -9,6 +9,7 @@ export async function getSupabaseConfig() {
     configured: Boolean(config.supabaseUrl && config.supabaseAnonKey),
     supabaseUrl: config.supabaseUrl || "",
     supabaseAnonKey: config.supabaseAnonKey || "",
+    authRequiredForGenerate: config.authRequiredForGenerate !== false,
   };
 }
 
@@ -27,4 +28,3 @@ export async function getSupabaseClient() {
   }
   return clientPromise;
 }
-

@@ -12,6 +12,6 @@ export default function handler(req, res) {
     ok: true,
     supabaseUrl: process.env.SUPABASE_URL || "",
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+    authRequiredForGenerate: process.env.ALLOW_UNAUTHENTICATED_GENERATE !== "true",
   }));
 }
-
