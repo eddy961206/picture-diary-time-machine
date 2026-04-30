@@ -5,6 +5,17 @@ import {
   getSharePageUrl,
 } from "./share-utils.js";
 import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js";
+import {
+  getSeoulDateKey,
+  getStreakReward,
+  getTodayRitualState,
+  LOADING_LINES,
+  MAX_DAILY_GENERATIONS,
+  remainingGenerations as getRemainingGenerations,
+  saveSuccessfulGeneration as recordSuccessfulGeneration,
+  SHARE_LINES,
+  writeRitualState,
+} from "./ritual-state.js";
 
 const form = document.querySelector("#diaryForm");
 const statusEl = document.querySelector("#status");
@@ -12,15 +23,21 @@ const photoInput = document.querySelector("#photo");
 const photoPreviewWrap = document.querySelector("#photoPreviewWrap");
 const photoPreview = document.querySelector("#photoPreview");
 const clearPhoto = document.querySelector("#clearPhoto");
-const promptOnly = document.querySelector("#promptOnly");
-const promptPreview = document.querySelector("#promptPreview");
 const generateBtn = document.querySelector("#generateBtn");
+const eraserChance = document.querySelector("#eraserChance");
 const resultImage = document.querySelector("#resultImage");
 const loading = document.querySelector("#loading");
+const loadingText = document.querySelector("#loadingText");
 const downloadLink = document.querySelector("#downloadLink");
-const copyPrompt = document.querySelector("#copyPrompt");
+const copyShareText = document.querySelector("#copyShareText");
 const log = document.querySelector("#log");
 const socialShareButtons = document.querySelectorAll("[data-share-target]");
+const stampButtons = document.querySelectorAll("[data-stamp]");
+const quotaCard = document.querySelector("#quotaCard");
+const quotaTitle = document.querySelector("#quotaTitle");
+const quotaText = document.querySelector("#quotaText");
+const streakTitle = document.querySelector("#streakTitle");
+const streakText = document.querySelector("#streakText");
 const authTitle = document.querySelector("#authTitle");
 const authSubtitle = document.querySelector("#authSubtitle");
 const authActions = document.querySelector("#authActions");
@@ -33,7 +50,6 @@ const diaryList = document.querySelector("#diaryList");
 const diaryBookHint = document.querySelector("#diaryBookHint");
 
 let referenceImageDataUrl = "";
-let lastPrompt = "";
 let currentImageUrl = resultImage.getAttribute("src") || "/sample-output.png";
 let currentImageFormat = "png";
 let currentImageFilename = createImageFilename(currentImageFormat);
@@ -41,66 +57,70 @@ let supabase = null;
 let currentUser = null;
 let lastGeneratedInput = null;
 let authNotice = "";
+let currentStamp = "";
 
-const defaultPromptBuilder = (data) => `
-Create one realistic photographed Korean elementary-school picture diary homework page.
-
-Core concept:
-- It must look like a real physical workbook page, casually photographed on a desk in natural indoor light.
-- Era/context: ${data.era || "2010년대 초반 한국 초등학교 방학숙제"}.
-- Student persona: ${data.child || "초등학교 2학년 남자아이"}.
-- Page type: Korean “그림일기” worksheet with printed boxes for 날짜, 날씨, 제목, 그림, and 일기 lines.
-- Date field: ${data.date || "2011년 8월 어느 날"}
-- Weather field: ${data.weather || "맑음"}
-- Title field: ${data.title || "즐거운 하루"}
-- Place/event cue: ${data.place || "여름 방학에 놀러 간 곳"}
-- Mood: ${data.mood || "옛날 추억, 살짝 구겨진 학습지"}
-- Handwriting: ${data.handwriting || "초등학교 2학년 남자아이의 삐뚤빼뚤하지만 읽히는 연필 글씨"}
-
-Diary content to appear in Korean handwriting, rewritten only slightly to sound like a 2nd grader:
-${data.diary || "오늘 재미있는 일을 했다. 정말 신났다. 다음에 또 하고 싶다."}
-
-Extra user details:
-${data.detail || "없음"}
-
-Visual requirements:
-- The result is NOT a clean digital poster. It is a phone photo of paper.
-- Use slightly wrinkled white workbook paper, faint shadows, page edge, printed gray table lines, and a small page number near the bottom.
-- The top heading should say “그림일기”. Include a simple instruction line like a Korean workbook.
-- Draw the main illustration as a child’s crayon drawing: naive proportions, uneven coloring, simple sun/trees/people/objects, imperfect lines, childlike perspective.
-- The diary lines should be handwritten in Korean pencil, large and uneven, legible but juvenile.
-- Make the written Korean plausible, short, and emotionally simple.
-- Avoid looking too polished, too modern, or like a generated infographic.
-- Keep the page portrait-oriented, similar to a Korean school workbook page photographed at a slight angle.
-
-${referenceImageDataUrl ? "Reference image instruction: Use the uploaded photo only as memory/source material for the event, characters, place, composition, clothing colors, and props. Do not output the original photo. Transform it into a child-made picture diary page." : "No reference photo was provided. Infer a simple childlike scene from the diary text."}
-`.trim();
 
 function formData() {
   const data = Object.fromEntries(new FormData(form).entries());
   data.referenceImageDataUrl = referenceImageDataUrl;
+  data.size = "1024x1536";
+  data.quality = "medium";
+  data.outputFormat = "png";
   return data;
 }
 
 function validateRequiredInputs() {
-  const requiredNames = ["title", "place", "diary", "detail"];
-  const missing = requiredNames
-    .map((name) => form.elements[name])
-    .find((field) => !String(field.value || "").trim());
-
-  if (!missing) return true;
-  missing.reportValidity();
-  setLog("제목, 장소/상황, 일기 몇 줄, 디테일은 꼭 넣어줘.", "error");
+  const diary = form.elements.diary;
+  if (String(diary.value || "").trim()) return true;
+  diary.reportValidity();
+  setLog("오늘 한 줄만 써줘. 진짜 짧아도 괜찮아.", "error");
   return false;
-}
-
-function hasRequiredPromptData(data) {
-  return ["title", "place", "diary", "detail"].every((key) => String(data[key] || "").trim());
 }
 
 function setLog(message, tone = "normal") {
   log.textContent = message || "";
   log.dataset.tone = tone;
+}
+
+function setText(element, text) {
+  if (element) element.textContent = text;
+}
+
+function remainingGenerations() {
+  return getRemainingGenerations(getTodayRitualState());
+}
+
+function updateRitualUi() {
+  const state = getTodayRitualState();
+  writeRitualState(state);
+  const remaining = getRemainingGenerations(state);
+  const locked = remaining <= 0;
+  const hasUsedFirst = state.generations > 0;
+
+  if (state.generations === 0) {
+    quotaTitle.textContent = "오늘 일기는 아직 안 냈어.";
+    quotaText.textContent = "오늘의 그림일기 1장 남음";
+  } else if (state.generations === 1) {
+    quotaTitle.textContent = "오늘 일기는 냈어.";
+    quotaText.textContent = "지우개 찬스 1번 남았어.";
+  } else {
+    quotaTitle.textContent = "선생님이 오늘은 여기까지래.";
+    quotaText.textContent = "지우개 찬스까지 썼어. 내일 또 써보자.";
+  }
+
+  quotaCard.dataset.state = locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
+  generateBtn.disabled = locked;
+  generateBtn.textContent = hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
+  eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
+  eraserChance.disabled = locked;
+  form.elements.diary.disabled = locked;
+  photoInput.disabled = locked;
+  form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
+
+  streakTitle.textContent = getStreakReward(state.streak);
+  streakText.textContent = state.streak
+    ? `${state.streak}일째 방학숙제장을 채우는 중이야.`
+    : "오늘 한 장을 내면 연속 기록이 시작돼.";
 }
 
 function getUserProvider(user) {
@@ -153,12 +173,12 @@ function setAuthUi(message = "") {
   const displayMessage = message || authNotice;
 
   if (!supabase) {
-    authTitle.textContent = "Supabase 설정이 필요해";
-    authSubtitle.textContent = "SUPABASE_URL, SUPABASE_ANON_KEY를 넣으면 로그인과 일기장이 켜져.";
+    setText(authTitle, "Supabase 설정이 필요해");
+    setText(authSubtitle, "로그인 없이도 오늘 한 장은 만들 수 있어. 저장만 나중에 켜질 거야.");
     setProviderBadge(null);
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
-    diaryBookHint.textContent = "Supabase 프로젝트를 연결하면 날짜별 그림일기를 저장하고 다시 볼 수 있어.";
+    setText(diaryBookHint, "로그인하면 날짜별 숙제를 모아볼 수 있어.");
     return;
   }
 
@@ -170,13 +190,13 @@ function setAuthUi(message = "") {
 
   if (currentUser) {
     const provider = getUserProvider(currentUser);
-    authTitle.textContent = currentUser.user_metadata?.full_name || currentUser.email || "로그인됨";
-    authSubtitle.textContent = displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 생성한 그림일기를 내 일기장에 저장할 수 있어.`;
-    diaryBookHint.textContent = "날짜별로 저장된 그림일기를 다시 볼 수 있어.";
+    setText(authTitle, currentUser.user_metadata?.full_name || currentUser.email || "로그인됨");
+    setText(authSubtitle, displayMessage || `${provider.label.replace(" 중", "")} 계정으로 연결됐어. 오늘 숙제를 내 방학숙제장에 붙일 수 있어.`);
+    setText(diaryBookHint, "날짜별로 제출한 그림일기를 다시 볼 수 있어.");
   } else {
-    authTitle.textContent = "로그인하면 일기장이 저장돼";
-    authSubtitle.textContent = displayMessage || "Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.";
-    diaryBookHint.textContent = "로그인하면 날짜별로 전에 썼던 그림일기를 다시 볼 수 있어.";
+    setText(authTitle, "로그인하면 방학숙제장이 이어져");
+    setText(authSubtitle, displayMessage || "Google, KakaoTalk, Naver 계정으로 오늘 일기를 모아둘 수 있어.");
+    setText(diaryBookHint, "로그인하면 날짜별로 전에 냈던 숙제를 다시 볼 수 있어.");
   }
 }
 
@@ -192,9 +212,8 @@ function setCurrentImage(url, format = "png") {
 }
 
 function shareText() {
-  const data = formData();
-  const title = data.title || "그림일기";
-  return `그림일기 타임머신으로 만든 ${title}`;
+  const state = getTodayRitualState();
+  return SHARE_LINES[state.generations % SHARE_LINES.length];
 }
 
 async function shareImageThroughInstalledApps() {
@@ -225,39 +244,17 @@ async function shareImageThroughInstalledApps() {
   setLog("공유 창을 열었어.");
 }
 
-async function refreshPrompt() {
-  const data = formData();
-  if (!hasRequiredPromptData(data)) {
-    lastPrompt = "";
-    promptPreview.textContent = "제목, 장소/상황, 일기 몇 줄, 디테일을 모두 입력하면 프롬프트가 만들어져.";
-    return;
-  }
-
-  try {
-    const res = await fetch("/api/prompt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    lastPrompt = json.prompt || defaultPromptBuilder(data);
-  } catch {
-    lastPrompt = defaultPromptBuilder(data);
-  }
-  promptPreview.textContent = lastPrompt;
-}
-
 async function checkHealth() {
   try {
     const res = await fetch("/api/health");
     const json = await res.json();
     if (json.hasApiKey) {
-      statusEl.textContent = `API 연결 준비됨 · ${json.imageModel}`;
+      statusEl.textContent = "방학숙제장 준비됨";
     } else {
-      statusEl.textContent = "API 키 없음 · 샘플/프롬프트 미리보기만 가능";
+      statusEl.textContent = "API 키 없음 · 오늘 숙제 제출은 잠시 쉬는 중";
     }
   } catch {
-    statusEl.textContent = "서버 연결 확인 실패";
+    statusEl.textContent = "일기장 확인 실패";
   }
 }
 
@@ -279,12 +276,12 @@ function escapeHtml(value) {
 
 function renderDiaryEntries(entries = []) {
   if (!currentUser) {
-    diaryList.innerHTML = '<div class="empty-state">로그인하면 내 그림일기장을 볼 수 있어.</div>';
+    diaryList.innerHTML = '<div class="empty-state">로그인하면 내 방학숙제장을 볼 수 있어.</div>';
     return;
   }
 
   if (!entries.length) {
-    diaryList.innerHTML = '<div class="empty-state">아직 저장된 그림일기가 없어.</div>';
+    diaryList.innerHTML = '<div class="empty-state">아직 제출한 그림일기가 없어.</div>';
     return;
   }
 
@@ -294,10 +291,8 @@ function renderDiaryEntries(entries = []) {
         <img src="${escapeHtml(entry.image_url)}" alt="${escapeHtml(entry.title)}" loading="lazy" />
       </button>
       <div class="diary-entry__body">
-        <div class="diary-entry__meta">${escapeHtml(entry.diary_date || "날짜 없음")} · ${escapeHtml(entry.weather || "날씨 없음")}</div>
+        <div class="diary-entry__meta">${escapeHtml(entry.diary_date || "날짜 없음")}</div>
         <h3>${escapeHtml(entry.title)}</h3>
-        <p>${escapeHtml(entry.place)}</p>
-        <button type="button" class="ghost mini" data-delete-entry="${entry.id}">삭제</button>
       </div>
     </article>
   `).join("");
@@ -307,23 +302,7 @@ function renderDiaryEntries(entries = []) {
       const entry = entries.find((item) => item.id === button.dataset.entryId);
       if (!entry) return;
       setCurrentImage(entry.image_url, entry.image_format || "png");
-      promptPreview.textContent = entry.prompt || "";
-      lastPrompt = entry.prompt || "";
       setLog(`${entry.diary_date || "이전"} 그림일기를 열었어.`);
-    });
-  });
-
-  diaryList.querySelectorAll("[data-delete-entry]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (!supabase || !currentUser) return;
-      const id = button.dataset.deleteEntry;
-      const { error } = await supabase.from("diary_entries").delete().eq("id", id);
-      if (error) {
-        setLog(`삭제 실패: ${error.message}`, "error");
-        return;
-      }
-      setLog("일기를 삭제했어.");
-      await loadDiaryEntries();
     });
   });
 }
@@ -336,7 +315,7 @@ async function loadDiaryEntries() {
 
   const { data, error } = await supabase
     .from("diary_entries")
-    .select("id, diary_date, weather, title, place, image_url, image_format, prompt, created_at")
+    .select("id, diary_date, weather, title, place, image_url, image_format, created_at")
     .order("created_at", { ascending: false })
     .limit(60);
 
@@ -400,7 +379,7 @@ photoInput.addEventListener("change", async () => {
   referenceImageDataUrl = await readFileAsDataUrl(file);
   photoPreview.src = referenceImageDataUrl;
   photoPreviewWrap.classList.remove("hidden");
-  await refreshPrompt();
+  setLog("사진 붙였어. 없어도 되지만, 있으면 오늘 장면을 조금 더 기억해볼게.");
 });
 
 clearPhoto.addEventListener("click", async () => {
@@ -408,24 +387,26 @@ clearPhoto.addEventListener("click", async () => {
   referenceImageDataUrl = "";
   photoPreview.src = "";
   photoPreviewWrap.classList.add("hidden");
-  await refreshPrompt();
+  setLog("사진은 뺐어. 한 줄만으로도 숙제 낼 수 있어.");
 });
 
 form.addEventListener("input", () => {
-  window.clearTimeout(form._timer);
-  form._timer = window.setTimeout(refreshPrompt, 180);
+  if (remainingGenerations() <= 0) {
+    setLog("오늘 일기는 다 냈어. 내일 또 숙제하러 와.");
+  }
 });
 
-promptOnly.addEventListener("click", async () => {
-  if (!validateRequiredInputs()) return;
-  await refreshPrompt();
-  setLog("프롬프트만 만들었어. 이걸 그대로 다른 이미지 생성기에 넣어도 돼.");
+copyShareText.addEventListener("click", async () => {
+  await navigator.clipboard.writeText(shareText());
+  setLog("친구한테 보낼 말 복사했어.");
 });
 
-copyPrompt.addEventListener("click", async () => {
-  await refreshPrompt();
-  await navigator.clipboard.writeText(lastPrompt);
-  setLog("프롬프트 복사했어.");
+stampButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    currentStamp = button.dataset.stamp || "";
+    stampButtons.forEach((item) => item.classList.toggle("selected", item === button));
+    setLog(`${currentStamp} 도장 찍었어.`);
+  });
 });
 
 socialShareButtons.forEach((button) => {
@@ -482,6 +463,10 @@ signOut.addEventListener("click", async () => {
 
 refreshDiary.addEventListener("click", loadDiaryEntries);
 
+eraserChance.addEventListener("click", () => {
+  form.requestSubmit();
+});
+
 saveDiary.addEventListener("click", async () => {
   if (!supabase || !currentUser) {
     setLog("로그인해야 일기장에 저장할 수 있어.", "error");
@@ -514,16 +499,15 @@ saveDiary.addEventListener("click", async () => {
   const { data: publicUrlData } = supabase.storage.from("diary-images").getPublicUrl(path);
   const insert = await supabase.from("diary_entries").insert({
     user_id: currentUser.id,
-    diary_date: data.date || "",
-    weather: data.weather || "",
-    title: data.title || "그림일기",
-    child: data.child || "",
-    place: data.place || "",
+    diary_date: data.date || getSeoulDateKey(),
+    weather: data.weather || "오늘 날씨",
+    title: data.title || "오늘의 그림일기",
+    child: "초등학교 2학년 남자아이",
+    place: data.place || data.diary || "오늘 있었던 일",
     diary_text: data.diary || "",
-    detail: data.detail || "",
+    detail: currentStamp || data.moodType || "",
     image_url: publicUrlData.publicUrl,
     image_format: currentImageFormat,
-    prompt: lastPrompt || "",
   });
 
   saveDiary.disabled = false;
@@ -532,19 +516,24 @@ saveDiary.addEventListener("click", async () => {
     return;
   }
 
-  setLog("일기장에 저장했어.");
+  setLog("방학숙제장에 붙였어.");
   await loadDiaryEntries();
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (remainingGenerations() <= 0) {
+    updateRitualUi();
+    setLog("오늘 일기는 다 냈어. 방학숙제는 하루에 한 장씩.");
+    return;
+  }
   if (!validateRequiredInputs()) return;
-  await refreshPrompt();
 
   loading.classList.remove("hidden");
   generateBtn.disabled = true;
-  promptOnly.disabled = true;
-  setLog("사진이 있으면 참고해서, 없으면 일기 내용만 보고 그림일기로 만드는 중이야.");
+  eraserChance.disabled = true;
+  loadingText.textContent = LOADING_LINES[getTodayRitualState().generations % LOADING_LINES.length];
+  setLog(getTodayRitualState().generations ? "선생님 몰래 다시 그리는 중이야." : "오늘 하루를 숙제장에 붙이는 중이야.");
 
   try {
     const res = await fetch("/api/generate", {
@@ -557,19 +546,20 @@ form.addEventListener("submit", async (event) => {
 
     setCurrentImage(json.image, formData().outputFormat || "png");
     lastGeneratedInput = formData();
-    lastPrompt = json.prompt || lastPrompt;
-    promptPreview.textContent = lastPrompt;
-    setLog(`완료됐어. 모드: ${json.mode}, 모델: ${json.model}`);
+    recordSuccessfulGeneration();
+    updateRitualUi();
+    setLog(getTodayRitualState().generations >= MAX_DAILY_GENERATIONS
+      ? "오늘의 숙제 끝. 지우개 찬스까지 썼어."
+      : "오늘의 그림일기 냈어. 마음에 안 들면 지우개 찬스가 한 번 남았어.");
   } catch (error) {
-    setLog(error.message || "오류가 났어.", "error");
+    setLog(error.message || "잉크가 번졌어. 실패한 숙제는 횟수로 안 칠게.", "error");
   } finally {
     loading.classList.add("hidden");
-    generateBtn.disabled = false;
-    promptOnly.disabled = false;
+    updateRitualUi();
   }
 });
 
 setCurrentImage(currentImageUrl, currentImageFormat);
 checkHealth();
-refreshPrompt();
 initAuth();
+updateRitualUi();

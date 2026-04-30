@@ -96,18 +96,8 @@ function cleanMultiline(value, fallback = "") {
 }
 
 function validateRequiredInput(input) {
-  const required = [
-    ["title", "제목"],
-    ["place", "장소/상황"],
-    ["diary", "일기 몇 줄"],
-    ["detail", "더 넣고 싶은 디테일"],
-  ];
-  const missing = required
-    .filter(([key]) => !String(input[key] || "").trim())
-    .map(([, label]) => label);
-
-  if (missing.length) {
-    throw new Error(`${missing.join(", ")}을 꼭 입력해줘.`);
+  if (!String(input.diary || "").trim()) {
+    throw new Error("오늘 한 줄만 써줘. 진짜 짧아도 괜찮아.");
   }
 }
 
@@ -141,57 +131,66 @@ function parseDataUrl(dataUrl) {
 function buildDiaryPrompt(input) {
   validateRequiredInput(input);
 
-  const date = clean(input.date, "2011년 8월 어느 날");
+  const date = clean(input.date, "오늘");
   const weather = clean(input.weather, "맑음");
-  const title = clean(input.title, "즐거운 하루");
-  const child = clean(input.child, "초등학교 2학년 남자아이");
-  const place = clean(input.place, "여름 방학에 놀러 간 곳");
-  const diary = cleanMultiline(input.diary, "오늘 재미있는 일을 했다. 정말 신났다. 다음에 또 하고 싶다.");
-  const detail = clean(input.detail, "");
-  const era = clean(input.era, "2010년대 초반 한국 초등학교 방학숙제");
-  const mood = clean(input.mood, "옛날 추억, 싸이월드 이전/초기 스마트폰 사진 같은 생활감");
-  const handwriting = clean(input.handwriting, "초등학교 2학년 남자아이의 삐뚤빼뚤하지만 읽히는 연필 글씨");
+  const diary = cleanMultiline(input.diary, "오늘 별일은 없었지만 그래도 하루를 살았다.");
+  const moodType = clean(input.moodType, "funny");
   const hasReference = Boolean(input.referenceImageDataUrl);
+  const moodGuide = {
+    funny: "성인의 현실을 초등학생처럼 단순하게 적어서 살짝 웃기지만 따뜻하게. 과한 밈이나 조롱은 금지.",
+    soft: "별일 아닌 하루도 조금 애틋하고 소중하게. 슬프게 과장하지 말고 조용히 다정하게.",
+    kid: "정말 초등학교 2학년 남자아이가 쓴 것처럼 단순하고 솔직하게. 관찰 위주로.",
+  }[moodType] || "초등학생 그림일기처럼 짧고 단순하고 따뜻하게.";
 
   return `
-Create one realistic photographed Korean elementary-school picture diary homework page.
+Create one realistic photographed Korean elementary-school picture diary homework page from the user's tiny daily note.
 
 Core concept:
-- It must look like a real physical workbook page, casually photographed on a desk in natural indoor light.
-- Era/context: ${era}.
-- Student persona: ${child}.
+- This is not an AI art tool result. It is a quiet daily ritual artifact.
+- Turn an ordinary adult day into a 2010-2013 Korean elementary-school vacation homework picture diary.
+- Student persona: a Korean elementary school 2nd grade boy.
 - Page type: Korean “그림일기” worksheet with printed boxes for 날짜, 날씨, 제목, 그림, and 일기 lines.
 - Date field: ${date}
 - Weather field: ${weather}
-- Title field: ${title}
-- Place/event cue: ${place}
-- Mood: ${mood}
-- Handwriting: ${handwriting}
+- Title field: infer a very short childish title from the note, like "라면을 먹었다", "회사에 갔다", "비를 맞았다".
+- Mood direction: ${moodGuide}
 
-Diary content to appear in Korean handwriting, rewritten only slightly to sound like a 2nd grader:
+User's original tiny note:
 ${diary}
 
-Extra user details:
-${detail || "없음"}
+Rewrite the diary text yourself in Korean before drawing it:
+- 4 to 6 very short lines.
+- Use simple elementary-school wording, not adult essay style.
+- It can gently collide adult reality with childlike wording.
+- Example tone for "퇴근하고 편의점 라면 먹음":
+  제목: 라면을 먹었다
+  오늘 회사에 갔다.
+  일이 많아서 힘들었다.
+  집에 오는 길에 라면을 먹었다.
+  맛있었다.
+  다음에는 부자가 되고 싶다.
+- Keep it warm and funny, not meme-heavy.
+- Avoid polished literary phrasing.
 
 Visual requirements:
-- The result is NOT a clean digital poster. It is a phone photo of paper.
-- Use slightly wrinkled white workbook paper, faint shadows, page edge, printed gray table lines, and a small page number near the bottom.
+- The result is NOT a clean digital poster. It is a phone photo of real paper.
+- Use slightly wrinkled workbook paper, faint shadows, page edge, printed gray table lines, and a small page number near the bottom.
 - The top heading should say “그림일기”. Include a simple instruction line like a Korean workbook.
-- Draw the main illustration as a child’s crayon drawing: naive proportions, uneven coloring, simple sun/trees/people/objects, imperfect lines, childlike perspective.
+- Draw the main illustration as a child's crayon/color-pencil drawing: naive proportions, uneven coloring, colors outside the lines, simple sun/trees/people/objects, awkward body proportions, imperfect lines, childlike perspective.
 - The diary lines should be handwritten in Korean pencil, large and uneven, legible but juvenile.
-- Make the written Korean plausible, short, and emotionally simple.
-- Avoid looking too polished, too modern, or like a generated infographic.
+- Make the Korean short, simple, and plausible for a young child.
+- Preserve the feeling of a Korean 2010s school homework notebook photographed with a phone.
 - Keep the page portrait-oriented, similar to a Korean school workbook page photographed at a slight angle.
 
-${hasReference ? "Reference image instruction: Use the uploaded photo only as memory/source material for the event, characters, place, composition, clothing colors, and props. Do not output the original photo. Transform it into a child-made picture diary page." : "No reference photo was provided. Infer a simple childlike scene from the diary text."}
+${hasReference ? "Reference image instruction: Use the uploaded photo only as memory/source material for the event, characters, place, composition, clothing colors, and props. Do not output the original photo. Transform it into a child-made picture diary page." : "No reference photo was provided. Infer a simple childlike scene from the note."}
 
 Important negative constraints:
-- Do not create adult calligraphy.
-- Do not create perfect typography.
+- Do not create beautiful anime, mascot, Pixar-like, webtoon, polished children's book, or cute professional character art.
+- Do not create adult calligraphy or perfect typography.
 - Do not create a blank worksheet.
 - Do not make the drawing too skilled.
-- Do not add modern smartphones, QR codes, tablets, UI elements, or AI-watermark-looking graphics.
+- Do not add modern smartphones, QR codes, tablets, app UI, social media icons, rankings, likes, or AI-watermark-looking graphics.
+- Do not make the page too clean, centered, symmetrical, or design-system-like.
 `.trim();
 }
 
@@ -224,7 +223,7 @@ async function callOpenAIImageGeneration({ prompt, size, quality, outputFormat }
 
   const b64 = json?.data?.[0]?.b64_json;
   if (!b64) throw new Error("이미지 결과를 받지 못했어.");
-  return { b64, revisedPrompt: json?.data?.[0]?.revised_prompt || null, usage: json?.usage || null };
+  return { b64, usage: json?.usage || null };
 }
 
 async function callOpenAIImageEdit({ prompt, referenceImage, size, quality, outputFormat }) {
@@ -256,7 +255,7 @@ async function callOpenAIImageEdit({ prompt, referenceImage, size, quality, outp
 
   const b64 = json?.data?.[0]?.b64_json;
   if (!b64) throw new Error("이미지 결과를 받지 못했어.");
-  return { b64, revisedPrompt: json?.data?.[0]?.revised_prompt || null, usage: json?.usage || null };
+  return { b64, usage: json?.usage || null };
 }
 
 async function handleGenerate(req, res) {
@@ -284,8 +283,6 @@ async function handleGenerate(req, res) {
     sendJson(res, 200, {
       ok: true,
       image: `data:image/${outputFormat === "jpg" ? "jpeg" : outputFormat};base64,${result.b64}`,
-      prompt,
-      revisedPrompt: result.revisedPrompt,
       usage: result.usage,
       model: OPENAI_IMAGE_MODEL,
       mode: referenceImage ? "reference-image" : "text-only",
@@ -296,12 +293,10 @@ async function handleGenerate(req, res) {
 }
 
 async function handlePrompt(req, res) {
-  try {
-    const input = await readJson(req);
-    sendJson(res, 200, { ok: true, prompt: buildDiaryPrompt(input) });
-  } catch (error) {
-    sendJson(res, 400, { ok: false, error: error.message });
-  }
+  sendJson(res, 200, {
+    ok: false,
+    error: "이 앱은 프롬프트를 보여주지 않아. 오늘 한 줄만 쓰면 그림일기로 바꿔줄게.",
+  });
 }
 
 function serveStatic(req, res) {

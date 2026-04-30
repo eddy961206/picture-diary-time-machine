@@ -7,191 +7,143 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <main class="shell">
-    <section class="hero paper-card">
-      <div class="hero__copy">
-        <p class="eyebrow">2010년대 초딩 여름방학 숙제 감성 생성기</p>
-        <h1>그림일기<br />타임머신</h1>
-        <p class="lead">사진 한 장이나 일기 몇 줄만 넣으면, 삐뚤빼뚤한 초2 남자아이 그림일기 사진처럼 만들어줘.</p>
-        <div class="auth-card" id="authCard">
-          <div>
-            <span class="auth-provider-badge hidden" id="authProviderBadge">로그인 확인 중</span>
-            <strong id="authTitle">로그인하면 일기장이 저장돼</strong>
-            <p id="authSubtitle">Google, KakaoTalk, Naver 계정으로 이어서 볼 수 있어.</p>
+  <aside class="sidebar">
+    <a href="/" class="sidebar__logo">그림일기장</a>
+    <nav class="nav">
+      <a href="#" class="nav__item active">일기 쓰기 <span>01</span></a>
+      <a href="#diaryBook" class="nav__item">내 일기장 <span>02</span></a>
+      <a href="#classroom" class="nav__item">우리 반 <span>03</span></a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="content-wrapper">
+      <header class="top-bar">
+        <div class="auth-badge" id="authProviderBadge">로그인 확인 중</div>
+        <button type="button" class="btn--ghost mini hidden" id="signOut">로그아웃</button>
+        <div class="status" id="status">준비됨</div>
+      </header>
+
+      <section class="page-header">
+        <div class="profile">
+          <div class="avatar">
+            <img src="/main.png" alt="Profile" />
           </div>
-          <div class="auth-actions" id="authActions">
-            <button type="button" class="auth-button" data-auth-provider="google">Google</button>
-            <button type="button" class="auth-button" data-auth-provider="kakao">KakaoTalk</button>
-            <button type="button" class="auth-button" data-auth-provider="custom:naver">Naver</button>
+          <h1 class="brand-name">그림일기</h1>
+        </div>
+      </section>
+
+      <div class="grid">
+        <section class="workspace">
+          <form class="card" id="diaryForm">
+            <h2>오늘 뭐 했어?</h2>
+            <p class="section-intro">한 줄만 써도 일기가 돼. 잘 쓴 하루가 아니라, 그냥 지나간 하루를 숙제장에 붙이는 거야.</p>
+
+            <div class="quota-card" id="quotaCard">
+              <strong id="quotaTitle">오늘 일기는 아직 안 냈어.</strong>
+              <p id="quotaText">오늘의 그림일기 1장 남음</p>
+            </div>
+
+            <div class="field">
+              <label class="field__label">오늘 한 줄</label>
+              <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음" required></textarea>
+            </div>
+
+            <div class="field">
+              <label class="field__label">사진 한 장 붙이기 <em>선택</em></label>
+              <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
+            </div>
+
+            <div class="preview-box hidden" id="photoPreviewWrap">
+              <img id="photoPreview" alt="미리보기" />
+              <button type="button" class="btn--ghost" id="clearPhoto">지우기</button>
+            </div>
+
+            <div class="field">
+              <label class="field__label">오늘 일기 분위기</label>
+              <div class="mood-group">
+                <label>
+                  <input type="radio" name="moodType" value="funny" checked />
+                  <span>웃긴 일기</span>
+                </label>
+                <label>
+                  <input type="radio" name="moodType" value="soft" />
+                  <span>찡한 일기</span>
+                </label>
+                <label>
+                  <input type="radio" name="moodType" value="kid" />
+                  <span>진짜 초딩 일기</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn btn--primary" id="generateBtn">오늘의 그림일기 만들기</button>
+              <button type="button" class="btn btn--ghost hidden" id="eraserChance">선생님 몰래 다시 쓰기</button>
+            </div>
+
+            <div class="auth-card" id="authCard">
+              <div class="auth-actions" id="authActions" style="margin-top: 24px; display: flex; gap: 8px;">
+                <button type="button" class="share-btn" data-auth-provider="google">Google</button>
+                <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
+                <button type="button" class="share-btn" data-auth-provider="custom:naver">Naver</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section class="result">
+          <div class="card">
+            <h2>오늘의 숙제</h2>
+            <div class="result-display" id="resultStage">
+              <img id="resultImage" src="/sample-output.png" alt="생성 결과" />
+              <div class="loading-overlay hidden" id="loading">
+                <div class="spinner"></div>
+                <p id="loadingText">삐뚤빼뚤 글씨 쓰는 중...</p>
+              </div>
+            </div>
+
+            <div class="btn-group">
+              <a class="btn btn--ghost" id="downloadLink" href="#" download>이미지 저장</a>
+              <button type="button" class="btn btn--primary" id="saveDiary" style="flex: 1;">일기장에 저장</button>
+            </div>
+
+            <div class="stamps">
+              <button type="button" class="stamp" data-stamp="참 잘했어요">참 잘했어요</button>
+              <button type="button" class="stamp" data-stamp="재밌었음">재밌었음</button>
+              <button type="button" class="stamp" data-stamp="숙제 완료">숙제 완료</button>
+            </div>
+
+            <div class="shares">
+              <button type="button" class="share-btn" data-share-target="x">X</button>
+              <button type="button" class="share-btn" data-share-target="instagram">Insta</button>
+              <button type="button" class="share-btn" id="copyShareText">링크 복사</button>
+            </div>
+
+            <div class="streak-card" id="streakCard" style="margin-top: 24px; padding: 16px; background: #fff9ed; border-radius: 16px; border: 1px solid #ffe8cc;">
+              <strong id="streakTitle">방학숙제장 시작 전</strong>
+              <p id="streakText" style="margin: 0; font-size: 13px; color: #8e8476;">오늘 한 장을 내면 연속 기록이 시작돼.</p>
+            </div>
+            <div id="log" style="margin-top: 12px; font-size: 13px; color: var(--muted);"></div>
           </div>
-          <button type="button" class="ghost mini hidden" id="signOut">로그아웃</button>
-        </div>
-        <div class="status" id="status">서버 확인 중…</div>
+        </section>
       </div>
-      <div class="hero__sample">
-        <div class="tape tape--left"></div>
-        <img src="/sample-output.png" alt="샘플 그림일기" />
-        <div class="caption">샘플 결과</div>
-      </div>
-    </section>
 
-    <section class="workspace">
-      <form class="panel paper-card" id="diaryForm">
-        <div class="section-title">
-          <span>1</span>
-          <h2>추억 재료 넣기</h2>
+      <section class="diary-book card" id="diaryBook" style="margin-top: 40px;">
+        <h2>내 방학숙제장</h2>
+        <div class="diary-list" id="diaryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+          <div class="empty-state">아직 제출한 그림일기가 없어.</div>
         </div>
+        <button type="button" class="btn btn--ghost mini" id="refreshDiary" style="margin-top: 24px;">새로고침</button>
+      </section>
 
-        <label class="field file-field">
-          <span>참고 사진</span>
-          <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
-          <small>없어도 돼. 있으면 사진 속 장소/상황을 그림일기로 바꿔줘.</small>
-        </label>
-
-        <div class="preview-box hidden" id="photoPreviewWrap">
-          <img id="photoPreview" alt="업로드 미리보기" />
-          <button type="button" class="ghost mini" id="clearPhoto">사진 지우기</button>
-        </div>
-
-        <div class="grid two">
-          <label class="field">
-            <span>날짜</span>
-            <input name="date" placeholder="2011년 8월 5일 금요일" />
-          </label>
-          <label class="field">
-            <span>날씨</span>
-            <input name="weather" placeholder="맑음" />
-          </label>
-        </div>
-
-        <label class="field">
-          <span>제목</span>
-          <input name="title" placeholder="물놀이를 했다" required />
-        </label>
-
-        <div class="grid two">
-          <label class="field">
-            <span>주인공</span>
-            <input name="child" placeholder="초등학교 2학년 남자아이" />
-          </label>
-          <label class="field">
-            <span>장소/상황</span>
-            <input name="place" placeholder="가족이랑 계곡에 간 날" required />
-          </label>
-        </div>
-
-        <label class="field">
-          <span>일기 몇 줄</span>
-          <textarea name="diary" rows="5" placeholder="오늘 아빠, 엄마, 동생하고 계곡에 가서 물놀이를 했다.
-물이 시원하고 재미있었다.
-다음에 또 가고 싶다." required></textarea>
-        </label>
-
-        <label class="field">
-          <span>더 넣고 싶은 디테일</span>
-          <textarea name="detail" rows="3" placeholder="파란 티셔츠, 분홍 튜브, 나무 그늘, 오래된 책상 위에서 찍은 느낌" required></textarea>
-        </label>
-
-        <details class="advanced">
-          <summary>세부 옵션</summary>
-          <div class="grid two">
-            <label class="field">
-              <span>이미지 크기</span>
-              <select name="size">
-                <option value="1024x1536" selected>세로형 1024×1536</option>
-                <option value="1024x1024">정사각형 1024×1024</option>
-                <option value="1536x1024">가로형 1536×1024</option>
-                <option value="auto">자동</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>품질</span>
-              <select name="quality">
-                <option value="low">빠른 초안</option>
-                <option value="medium" selected>보통</option>
-                <option value="high">고품질</option>
-                <option value="auto">자동</option>
-              </select>
-            </label>
-          </div>
-          <div class="grid two">
-            <label class="field">
-              <span>출력 포맷</span>
-              <select name="outputFormat">
-                <option value="png" selected>PNG</option>
-                <option value="jpeg">JPEG</option>
-                <option value="webp">WebP</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>시대감</span>
-              <input name="era" placeholder="2010년대 초반 한국 초등학교 방학숙제" />
-            </label>
-          </div>
-          <label class="field">
-            <span>분위기</span>
-            <input name="mood" placeholder="옛날 추억, 살짝 구겨진 학습지, 집 책상 위에서 부모님이 폰으로 찍은 사진" />
-          </label>
-          <label class="field">
-            <span>글씨 느낌</span>
-            <input name="handwriting" placeholder="초등학교 2학년 남자아이의 삐뚤빼뚤하지만 읽히는 연필 글씨" />
-          </label>
-        </details>
-
-        <div class="actions">
-          <button type="button" class="ghost" id="promptOnly">프롬프트만 보기</button>
-          <button type="submit" class="primary" id="generateBtn">그림일기 생성</button>
-        </div>
-      </form>
-
-      <aside class="panel result paper-card">
-        <div class="section-title">
-          <span>2</span>
-          <h2>결과</h2>
-        </div>
-        <div class="result-stage" id="resultStage">
-          <img id="resultImage" src="/sample-output.png" alt="생성 결과" />
-          <div class="loading hidden" id="loading">
-            <div class="spinner"></div>
-            <p>초딩 감성으로 숙제 만드는 중…</p>
-          </div>
-        </div>
-        <div class="result-actions">
-          <a class="download" id="downloadLink" href="/sample-output.png" download="picture-diary.png">이미지 저장</a>
-          <button type="button" class="primary mini" id="saveDiary">일기장에 저장</button>
-          <button type="button" class="ghost mini" id="copyPrompt">프롬프트 복사</button>
-        </div>
-        <div class="share-panel" aria-label="SNS 공유">
-          <button type="button" class="share-button" data-share-target="x">X</button>
-          <button type="button" class="share-button" data-share-target="threads">Threads</button>
-          <button type="button" class="share-button" data-share-target="instagram">Instagram</button>
-        </div>
-        <details class="prompt-box" open>
-          <summary>생성 프롬프트</summary>
-          <pre id="promptPreview"></pre>
-        </details>
-        <div class="log" id="log"></div>
-      </aside>
-    </section>
-
-    <section class="diary-book paper-card" id="diaryBook">
-      <div class="section-title">
-        <span>3</span>
-        <h2>내 그림일기장</h2>
-      </div>
-      <div class="diary-toolbar">
-        <div>
-          <strong id="diaryBookTitle">저장된 일기</strong>
-          <p id="diaryBookHint">로그인하면 날짜별로 전에 썼던 그림일기를 다시 볼 수 있어.</p>
-        </div>
-        <button type="button" class="ghost mini" id="refreshDiary">새로고침</button>
-      </div>
-      <div class="diary-list" id="diaryList">
-        <div class="empty-state">아직 저장된 그림일기가 없어.</div>
-      </div>
-    </section>
+      <section class="classroom card" id="classroom" style="margin-top: 40px; background: linear-gradient(135deg, #c7e9b0 0%, #fdfcf9 100%);">
+        <h2>우리 반 일기장</h2>
+        <p>나중에는 친구들의 그림일기가 학급문집처럼 모일 거야.</p>
+      </section>
+    </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260429-oauth-scope"></script>
+  <script type="module" src="/app.js?v=20260429-ritual"></script>
 </body>
 </html>
