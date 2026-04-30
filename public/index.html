@@ -10,18 +10,17 @@
   <aside class="sidebar">
     <a href="/" class="sidebar__logo">그림일기장</a>
     <nav class="nav">
-      <a href="#" class="nav__item active">일기 쓰기 <span>01</span></a>
-      <a href="#diaryBook" class="nav__item">내 일기장 <span>02</span></a>
-      <a href="#classroom" class="nav__item">우리 반 <span>03</span></a>
+      <a href="#" class="nav__item active">일기 쓰기</a>
+      <a href="#diaryBook" class="nav__item">내 일기장</a>
+      <a href="#classroom" class="nav__item">우리 반</a>
     </nav>
   </aside>
 
   <main class="main">
     <div class="content-wrapper">
       <header class="top-bar">
-        <div class="auth-badge" id="authProviderBadge">로그인 확인 중</div>
-        <button type="button" class="btn--ghost mini hidden" id="signOut">로그아웃</button>
-        <div class="status" id="status">준비됨</div>
+        <div class="auth-badge" id="authProviderBadge"></div>
+        <button type="button" class="btn--ghost mini hidden" id="signOut">일기장 덮기</button>
       </header>
 
       <section class="page-header">
@@ -37,71 +36,58 @@
         <section class="workspace">
           <form class="card" id="diaryForm">
             <h2>오늘 뭐 했어?</h2>
-            <p class="section-intro">한 줄만 써도 일기가 돼. 잘 쓴 하루가 아니라, 그냥 지나간 하루를 숙제장에 붙이는 거야.</p>
+            <p class="section-intro">별거 없는 하루라도 괜찮아. 숙제장에 한 줄만 남겨보자.</p>
 
             <div class="quota-card" id="quotaCard">
-              <strong id="quotaTitle">오늘 일기는 아직 안 냈어.</strong>
-              <p id="quotaText">오늘의 그림일기 1장 남음</p>
+              <strong id="quotaTitle">오늘의 일기장</strong>
+              <p id="quotaText">오늘의 숙제 1번 남음</p>
             </div>
 
-            <div class="locked-preview hidden" id="lockedPreview">
-              <strong>아래 입력은 로그인 후 열려.</strong>
-              <p>지금은 샘플 결과만 볼 수 있어. 로그인하면 네 OpenAI 키 없이 바로 직접 만들 수 있어.</p>
+            <div class="field">
+              <label class="field__label">오늘 있었던 일</label>
+              <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음. 맛있었다." required></textarea>
             </div>
 
-            <div id="creationFields">
-              <div class="field">
-                <label class="field__label">오늘 한 줄</label>
-                <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음" required></textarea>
-              </div>
-
-              <div class="field">
-                <label class="field__label">사진 한 장 붙이기 <em>선택</em></label>
-                <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
-              </div>
-
-              <div class="preview-box hidden" id="photoPreviewWrap">
-                <img id="photoPreview" alt="미리보기" />
-                <button type="button" class="btn--ghost" id="clearPhoto">지우기</button>
-              </div>
-
-              <div class="field">
-                <label class="field__label">오늘 일기 분위기</label>
-                <div class="mood-group">
-                  <label>
-                    <input type="radio" name="moodType" value="funny" checked />
-                    <span>웃긴 일기</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="moodType" value="soft" />
-                    <span>찡한 일기</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="moodType" value="kid" />
-                    <span>진짜 초딩 일기</span>
-                  </label>
-                </div>
-              </div>
+            <div class="field">
+              <label class="field__label">그날의 사진 <em>없어도 돼</em></label>
+              <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
             </div>
 
-            <div class="auth-card" id="authCard">
-              <div class="auth-card__header">
-                <span class="auth-card__step">2</span>
-                <div>
-                  <strong id="authTitle">만들 때만 로그인이 필요해</strong>
-                  <p id="authSubtitle">샘플을 보고 마음에 들면 아래 계정 중 하나로 로그인해. 네 OpenAI 키는 필요 없어.</p>
-                </div>
-              </div>
-              <div class="auth-actions" id="authActions">
-                <button type="button" class="share-btn" data-auth-provider="google">Google</button>
-                <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
-                <button type="button" class="share-btn" data-auth-provider="custom:naver">Naver</button>
+            <div class="preview-box hidden" id="photoPreviewWrap">
+              <img id="photoPreview" alt="미리보기" />
+              <button type="button" class="btn--ghost" id="clearPhoto">빼기</button>
+            </div>
+
+            <div class="field">
+              <label class="field__label">오늘의 분위기</label>
+              <div class="mood-group">
+                <label>
+                  <input type="radio" name="moodType" value="funny" checked />
+                  <span>웃긴 일기</span>
+                </label>
+                <label>
+                  <input type="radio" name="moodType" value="soft" />
+                  <span>찡한 일기</span>
+                </label>
+                <label>
+                  <input type="radio" name="moodType" value="kid" />
+                  <span>진짜 초딩 일기</span>
+                </label>
               </div>
             </div>
 
             <div class="actions">
-              <button type="submit" class="btn btn--primary" id="generateBtn">오늘의 그림일기 만들기</button>
-              <button type="button" class="btn btn--ghost hidden" id="eraserChance">선생님 몰래 다시 쓰기</button>
+              <button type="submit" class="btn btn--primary" id="generateBtn">그림일기 제출하기</button>
+              <button type="button" class="btn btn--ghost hidden" id="eraserChance">마음에 안 들어! 다시 쓸래</button>
+            </div>
+
+            <div class="auth-card" id="authCard">
+              <p style="font-size: 13px; color: var(--muted); margin-bottom: 8px;">일기장을 잃어버리지 않으려면?</p>
+              <div class="auth-actions" id="authActions" style="display: flex; gap: 8px;">
+                <button type="button" class="share-btn" data-auth-provider="google">Google</button>
+                <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
+                <button type="button" class="share-btn" data-auth-provider="custom:naver">Naver</button>
+              </div>
             </div>
           </form>
         </section>
@@ -118,8 +104,8 @@
             </div>
 
             <div class="btn-group">
-              <a class="btn btn--ghost" id="downloadLink" href="#" download>이미지 저장</a>
-              <button type="button" class="btn btn--primary" id="saveDiary" style="flex: 1;">일기장에 저장</button>
+              <a class="btn btn--ghost" id="downloadLink" href="#" download>일기 가져가기</a>
+              <button type="button" class="btn btn--primary" id="saveDiary" style="flex: 1;">일기장에 붙이기</button>
             </div>
 
             <div class="stamps">
@@ -135,10 +121,10 @@
             </div>
 
             <div class="streak-card" id="streakCard" style="margin-top: 24px; padding: 16px; background: #fff9ed; border-radius: 16px; border: 1px solid #ffe8cc;">
-              <strong id="streakTitle">방학숙제장 시작 전</strong>
-              <p id="streakText" style="margin: 0; font-size: 13px; color: #8e8476;">오늘 한 장을 내면 연속 기록이 시작돼.</p>
+              <strong id="streakTitle">방학숙제장 시작!</strong>
+              <p id="streakText" style="margin: 0; font-size: 13px; color: #8e8476;">오늘 한 장을 내면 기록이 시작돼.</p>
             </div>
-            <div id="log" style="margin-top: 12px; font-size: 13px; color: var(--muted);"></div>
+            <div id="log" style="margin-top: 12px; font-size: 13px; color: var(--muted); text-align: center;"></div>
           </div>
         </section>
       </div>
@@ -146,18 +132,18 @@
       <section class="diary-book card" id="diaryBook" style="margin-top: 40px;">
         <h2>내 방학숙제장</h2>
         <div class="diary-list" id="diaryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
-          <div class="empty-state">아직 제출한 그림일기가 없어.</div>
+          <div class="empty-state">아직 모은 일기가 없어.</div>
         </div>
-        <button type="button" class="btn btn--ghost mini" id="refreshDiary" style="margin-top: 24px;">새로고침</button>
+        <button type="button" class="btn btn--ghost mini" id="refreshDiary" style="margin-top: 24px;">일기장 들춰보기</button>
       </section>
 
       <section class="classroom card" id="classroom" style="margin-top: 40px; background: linear-gradient(135deg, #c7e9b0 0%, #fdfcf9 100%);">
         <h2>우리 반 일기장</h2>
-        <p>나중에는 친구들의 그림일기가 학급문집처럼 모일 거야.</p>
+        <p>나중에 친구들의 일기장이 모이면 이곳에 학급문집처럼 나타날 거야.</p>
       </section>
     </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260430-disabled-form"></script>
+  <script type="module" src="/app.js"></script>
 </body>
 </html>
