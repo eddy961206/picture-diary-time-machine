@@ -43,6 +43,30 @@
               <p id="quotaText">오늘의 숙제 1번 남음</p>
             </div>
 
+            <div class="book-card hidden" id="bookCard">
+              <div class="book-card__header">
+                <div>
+                  <strong>어느 일기장에 붙일까?</strong>
+                  <p id="bookHint">기본은 나만 보는 일기장이야.</p>
+                </div>
+                <button type="button" class="btn--ghost mini" id="copyInviteCode">초대 코드 복사</button>
+              </div>
+              <label class="field__label" for="bookSelect">일기장</label>
+              <select id="bookSelect" name="bookSelect">
+                <option value="">나만 보기</option>
+              </select>
+              <div class="book-actions">
+                <form class="book-inline-form" id="createBookForm">
+                  <input type="text" name="bookName" maxlength="30" placeholder="공유 일기장 이름" />
+                  <button type="submit" class="share-btn">만들기</button>
+                </form>
+                <form class="book-inline-form" id="joinBookForm">
+                  <input type="text" name="inviteCode" maxlength="12" placeholder="초대 코드" />
+                  <button type="submit" class="share-btn">들어가기</button>
+                </form>
+              </div>
+            </div>
+
             <div class="field">
               <label class="field__label">오늘 있었던 일</label>
               <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음. 맛있었다." required></textarea>
@@ -138,8 +162,8 @@
       </section>
 
       <section class="classroom card" id="classroom" style="margin-top: 40px; background: linear-gradient(135deg, #c7e9b0 0%, #fdfcf9 100%);">
-        <h2>우리 반 일기장</h2>
-        <p>나중에 친구들의 일기장이 모이면 이곳에 학급문집처럼 나타날 거야.</p>
+        <h2>공유 일기장</h2>
+        <p>친구나 가족을 초대 코드로 불러서 같은 일기장에 그림일기를 모을 수 있어.</p>
       </section>
     </div>
   </main>

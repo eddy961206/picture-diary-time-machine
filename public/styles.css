@@ -212,6 +212,17 @@ textarea, input[type="file"] {
   background: #fafafa;
 }
 
+select,
+input[type="text"] {
+  width: 100%;
+  border: 2px solid #f0f0f0;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font: inherit;
+  outline: none;
+  background: #fafafa;
+}
+
 textarea:focus {
   border-color: var(--accent);
   background: #fff;
@@ -345,6 +356,53 @@ textarea:focus {
   background: #f5f5f5;
   border-color: #e0e0e0;
   opacity: 0.8;
+}
+
+.book-card {
+  margin-bottom: 24px;
+  padding: 18px;
+  border: 1px solid #dceacb;
+  border-radius: var(--radius-sm);
+  background: #f7fbf2;
+}
+
+.book-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.book-card strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.book-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.book-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.book-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.mini {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 /* Auth Card & Buttons */

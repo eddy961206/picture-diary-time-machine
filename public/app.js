@@ -44,6 +44,12 @@ const signOut = document.querySelector("#signOut");
 const saveDiary = document.querySelector("#saveDiary");
 const refreshDiary = document.querySelector("#refreshDiary");
 const diaryList = document.querySelector("#diaryList");
+const bookCard = document.querySelector("#bookCard");
+const bookSelect = document.querySelector("#bookSelect");
+const bookHint = document.querySelector("#bookHint");
+const copyInviteCode = document.querySelector("#copyInviteCode");
+const createBookForm = document.querySelector("#createBookForm");
+const joinBookForm = document.querySelector("#joinBookForm");
 
 let referenceImageDataUrl = "";
 let currentImageUrl = resultImage.getAttribute("src") || "/sample-output.png";
@@ -51,6 +57,8 @@ let currentImageFormat = "png";
 let currentImageFilename = createImageFilename(currentImageFormat);
 let supabase = null;
 let currentUser = null;
+let diaryBooks = [];
+let currentBookId = "";
 let lastGeneratedInput = null;
 let currentStamp = "";
 
@@ -86,10 +94,18 @@ function updateRitualUi() {
   const state = getTodayRitualState();
   writeRitualState(state);
   const remaining = getRemainingGenerations(state);
-  const locked = remaining <= 0;
+  const authUnavailable = !supabase;
+  const needsLogin = Boolean(supabase && !currentUser);
+  const locked = remaining <= 0 || authUnavailable || needsLogin;
   const hasUsedFirst = state.generations > 0;
 
-  if (state.generations === 0) {
+  if (authUnavailable) {
+    quotaTitle.textContent = "샘플로 먼저 둘러봐";
+    quotaText.textContent = "직접 만들기 설정이 아직 준비되지 않았어.";
+  } else if (needsLogin) {
+    quotaTitle.textContent = "샘플로 먼저 둘러봐";
+    quotaText.textContent = "직접 만들기는 로그인 후 열려.";
+  } else if (state.generations === 0) {
     quotaTitle.textContent = "오늘의 일기장";
     quotaText.textContent = "오늘의 숙제 1번 남음";
   } else if (state.generations === 1) {
@@ -100,9 +116,9 @@ function updateRitualUi() {
     quotaText.textContent = "내일 또 새로운 일기를 써보자.";
   }
 
-  quotaCard.dataset.state = locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
+  quotaCard.dataset.state = needsLogin ? "login" : locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
   generateBtn.disabled = locked;
-  generateBtn.textContent = hasUsedFirst ? "다시 그리기 (지우개 찬스)" : "그림일기 제출하기";
+  generateBtn.textContent = needsLogin ? "로그인 후 직접 만들기" : hasUsedFirst ? "다시 그리기 (지우개 찬스)" : "그림일기 제출하기";
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
   eraserChance.disabled = locked;
   form.elements.diary.disabled = locked;
@@ -134,6 +150,69 @@ function setProviderBadge(user) {
   const provider = getUserProvider(user);
   authProviderBadge.classList.remove("hidden");
   authProviderBadge.textContent = `${user.user_metadata?.full_name || "학생"}님 반가워!`;
+}
+
+function selectedBook() {
+  return diaryBooks.find((book) => book.id === currentBookId) || null;
+}
+
+function renderDiaryBooks() {
+  if (!bookCard || !bookSelect) return;
+  bookCard.classList.toggle("hidden", !currentUser);
+
+  const previousBookId = currentBookId;
+  bookSelect.innerHTML = '<option value="">나만 보기</option>';
+  diaryBooks.forEach((book) => {
+    const option = document.createElement("option");
+    option.value = book.id;
+    option.textContent = book.name;
+    bookSelect.append(option);
+  });
+
+  currentBookId = diaryBooks.some((book) => book.id === previousBookId) ? previousBookId : "";
+  bookSelect.value = currentBookId;
+  updateBookHint();
+}
+
+function updateBookHint() {
+  if (!bookHint || !copyInviteCode) return;
+  const book = selectedBook();
+  if (!book) {
+    bookHint.textContent = "기본은 나만 보는 일기장이야.";
+    copyInviteCode.classList.add("hidden");
+    return;
+  }
+
+  bookHint.textContent = `초대 코드 ${book.invite_code}로 같이 볼 사람을 불러올 수 있어.`;
+  copyInviteCode.classList.remove("hidden");
+}
+
+async function loadDiaryBooks() {
+  if (!supabase || !currentUser) {
+    diaryBooks = [];
+    currentBookId = "";
+    renderDiaryBooks();
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("diary_books")
+    .select("id, name, invite_code, owner_id, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    setLog("공유 일기장을 가져오지 못했어.", "error");
+    return;
+  }
+
+  diaryBooks = data || [];
+  renderDiaryBooks();
+}
+
+function createInviteCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(7));
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
 }
 
 async function completeKakaoLoginFromHash() {
@@ -168,6 +247,7 @@ function setAuthUi() {
   if (!supabase) {
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
+    updateRitualUi();
     return;
   }
 
@@ -179,6 +259,7 @@ function setAuthUi() {
   signOut.classList.toggle("hidden", !currentUser);
   saveDiary.disabled = !currentUser || !currentImageUrl.startsWith("data:");
   setProviderBadge(currentUser);
+  updateRitualUi();
 }
 
 function setCurrentImage(url, format = "png") {
@@ -278,11 +359,14 @@ async function loadDiaryEntries() {
     return;
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("diary_entries")
     .select("id, diary_date, weather, title, place, image_url, image_path, image_format, created_at")
     .order("created_at", { ascending: false })
     .limit(60);
+
+  query = currentBookId ? query.eq("book_id", currentBookId) : query.is("book_id", null);
+  const { data, error } = await query;
 
   if (error) {
     diaryList.innerHTML = `<div class="empty-state">일기장을 가져오지 못했어.</div>`;
@@ -336,6 +420,7 @@ async function initAuth() {
   if (!completedKakaoLogin && authError) {
     setLog("로그인 중에 문제가 생겼어.", "error");
   }
+  await loadDiaryBooks();
   await loadDiaryEntries();
 
   if (authError) {
@@ -345,6 +430,7 @@ async function initAuth() {
   supabase.auth.onAuthStateChange(async (_event, session) => {
     currentUser = session?.user || null;
     setAuthUi();
+    await loadDiaryBooks();
     await loadDiaryEntries();
   });
 }
@@ -490,6 +576,7 @@ saveDiary.addEventListener("click", async () => {
 
   const insert = await supabase.from("diary_entries").insert({
     user_id: currentUser.id,
+    book_id: currentBookId || null,
     diary_date: data.date || getSeoulDateKey(),
     weather: data.weather || "맑음",
     title: data.title || "오늘의 일기",
@@ -513,8 +600,103 @@ saveDiary.addEventListener("click", async () => {
   await loadDiaryEntries();
 });
 
+bookSelect?.addEventListener("change", async () => {
+  currentBookId = bookSelect.value;
+  updateBookHint();
+  await loadDiaryEntries();
+});
+
+copyInviteCode?.addEventListener("click", async () => {
+  const book = selectedBook();
+  if (!book) return;
+  await navigator.clipboard.writeText(book.invite_code);
+  setLog("초대 코드를 복사했어. 같이 쓸 사람에게 보내면 돼.");
+});
+
+createBookForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!supabase || !currentUser) {
+    setLog("로그인하면 공유 일기장을 만들 수 있어.", "error");
+    return;
+  }
+
+  const name = String(new FormData(createBookForm).get("bookName") || "").trim();
+  if (!name) {
+    setLog("공유 일기장 이름을 적어줘.", "error");
+    return;
+  }
+
+  const bookId = crypto.randomUUID();
+  const bookInsert = await supabase
+    .from("diary_books")
+    .insert({
+      id: bookId,
+      owner_id: currentUser.id,
+      name,
+      invite_code: createInviteCode(),
+    });
+
+  if (bookInsert.error) {
+    setLog("공유 일기장을 만들지 못했어.", "error");
+    return;
+  }
+
+  const memberInsert = await supabase.from("diary_book_members").insert({
+    book_id: bookId,
+    user_id: currentUser.id,
+    role: "owner",
+  });
+
+  if (memberInsert.error) {
+    setLog("일기장 멤버 등록에 실패했어.", "error");
+    return;
+  }
+
+  createBookForm.reset();
+  currentBookId = bookId;
+  await loadDiaryBooks();
+  await loadDiaryEntries();
+  setLog("공유 일기장을 만들었어. 초대 코드로 사람을 부를 수 있어.");
+});
+
+joinBookForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!supabase || !currentUser) {
+    setLog("로그인하면 공유 일기장에 들어갈 수 있어.", "error");
+    return;
+  }
+
+  const inviteCode = String(new FormData(joinBookForm).get("inviteCode") || "")
+    .trim()
+    .toUpperCase();
+  if (!inviteCode) {
+    setLog("초대 코드를 입력해줘.", "error");
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("join_diary_book_by_code", {
+    invite_code_input: inviteCode,
+  });
+
+  if (error || !data) {
+    setLog("초대 코드로 일기장을 찾지 못했어.", "error");
+    return;
+  }
+
+  joinBookForm.reset();
+  currentBookId = data;
+  await loadDiaryBooks();
+  await loadDiaryEntries();
+  setLog("공유 일기장에 들어왔어.");
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!supabase || !currentUser) {
+    updateRitualUi();
+    setLog("로그인하면 직접 그림일기를 만들 수 있어.", "error");
+    return;
+  }
   if (remainingGenerations() <= 0) {
     updateRitualUi();
     setLog("오늘 숙제는 여기까지야. 내일 또 만나!");
