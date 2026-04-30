@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-login-copy";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260430-login-state";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -40,6 +40,7 @@ const streakTitle = document.querySelector("#streakTitle");
 const streakText = document.querySelector("#streakText");
 const authTitle = document.querySelector("#authTitle");
 const authSubtitle = document.querySelector("#authSubtitle");
+const authCard = document.querySelector("#authCard");
 const authActions = document.querySelector("#authActions");
 const authProviderBadge = document.querySelector("#authProviderBadge");
 const authButtons = document.querySelectorAll("[data-auth-provider]");
@@ -59,6 +60,7 @@ let lastGeneratedInput = null;
 let authNotice = "";
 let currentStamp = "";
 let authRequiredForGenerate = false;
+let authConfigured = false;
 
 
 function formData() {
@@ -95,6 +97,10 @@ function needsLoginForGeneration() {
   return authRequiredForGenerate && !currentUser;
 }
 
+function cannotStartLogin() {
+  return authRequiredForGenerate && !authConfigured;
+}
+
 function updateRitualUi() {
   const state = getTodayRitualState();
   writeRitualState(state);
@@ -102,8 +108,15 @@ function updateRitualUi() {
   const locked = remaining <= 0;
   const hasUsedFirst = state.generations > 0;
   const needsLogin = needsLoginForGeneration();
+  const authUnavailable = cannotStartLogin();
 
-  if (state.generations === 0) {
+  if (authUnavailable) {
+    quotaTitle.textContent = "로그인 설정을 기다리는 중이야.";
+    quotaText.textContent = "사이트는 둘러볼 수 있지만 아직 생성은 막혀 있어.";
+  } else if (needsLogin) {
+    quotaTitle.textContent = "오늘 일기를 만들 준비가 됐어.";
+    quotaText.textContent = "로그인하면 네 OpenAI 키 없이 바로 한 장 만들 수 있어.";
+  } else if (state.generations === 0) {
     quotaTitle.textContent = "오늘 일기는 아직 안 냈어.";
     quotaText.textContent = "오늘의 그림일기 1장 남음";
   } else if (state.generations === 1) {
@@ -114,11 +127,11 @@ function updateRitualUi() {
     quotaText.textContent = "지우개 찬스까지 썼어. 내일 또 써보자.";
   }
 
-  quotaCard.dataset.state = locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
-  generateBtn.disabled = locked || needsLogin;
-  generateBtn.textContent = needsLogin ? "로그인하고 그림일기 만들기" : hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
+  quotaCard.dataset.state = authUnavailable ? "locked" : needsLogin ? "login" : locked ? "locked" : hasUsedFirst ? "eraser" : "ready";
+  generateBtn.disabled = locked || authUnavailable;
+  generateBtn.textContent = authUnavailable ? "로그인 설정 대기 중" : needsLogin ? "로그인하고 그림일기 만들기" : hasUsedFirst ? "지우개 찬스로 다시 만들기" : "오늘의 그림일기 만들기";
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
-  eraserChance.disabled = locked || needsLogin;
+  eraserChance.disabled = locked || needsLogin || authUnavailable;
   form.elements.diary.disabled = locked;
   photoInput.disabled = locked;
   form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
@@ -187,6 +200,7 @@ function setAuthUi(message = "") {
   if (!supabase) {
     setText(authTitle, "Supabase 설정이 필요해");
     setText(authSubtitle, "로그인 설정이 켜져야 그림일기를 만들 수 있어. 지금은 사이트 미리보기만 가능해.");
+    authCard.dataset.state = "unavailable";
     setProviderBadge(null);
     authButtons.forEach((button) => { button.disabled = true; });
     saveDiary.disabled = true;
@@ -197,6 +211,7 @@ function setAuthUi(message = "") {
 
   authButtons.forEach((button) => { button.disabled = Boolean(currentUser); });
   authActions.classList.toggle("hidden", Boolean(currentUser));
+  authCard.dataset.state = currentUser ? "ready" : "required";
   signOut.classList.toggle("hidden", !currentUser);
   saveDiary.disabled = !currentUser || !currentImageUrl.startsWith("data:");
   setProviderBadge(currentUser);
@@ -208,7 +223,7 @@ function setAuthUi(message = "") {
     setText(diaryBookHint, "날짜별로 제출한 그림일기를 다시 볼 수 있어.");
   } else {
     setText(authTitle, "만들 때만 로그인이 필요해");
-    setText(authSubtitle, displayMessage || "어떤 사이트인지 먼저 둘러봐도 돼. 네 OpenAI 키는 필요 없고, 로그인하면 오늘 한 장을 바로 만들 수 있어.");
+    setText(authSubtitle, displayMessage || "한 줄을 적고 분위기를 고른 뒤, 아래 계정 중 하나로 로그인하면 바로 생성돼. 네 OpenAI 키는 필요 없어.");
     setText(diaryBookHint, "로그인하면 날짜별로 전에 냈던 숙제를 다시 볼 수 있어.");
   }
   updateRitualUi();
@@ -371,6 +386,7 @@ function getStoredImagePath(value) {
 async function initAuth() {
   const config = await getSupabaseConfig();
   authRequiredForGenerate = config.authRequiredForGenerate;
+  authConfigured = config.configured;
   if (!config.configured) {
     setAuthUi();
     renderDiaryEntries([]);
@@ -584,7 +600,11 @@ form.addEventListener("submit", async (event) => {
     return;
   }
   if (needsLoginForGeneration()) {
-    setLog("로그인해야 그림일기를 만들 수 있어.", "error");
+    authCard.classList.remove("attention");
+    void authCard.offsetWidth;
+    authCard.classList.add("attention");
+    authCard.scrollIntoView({ behavior: "smooth", block: "center" });
+    setLog("한 줄은 그대로 둘게. 아래 로그인 버튼을 누르면 바로 이어서 만들 수 있어.", "error");
     updateRitualUi();
     return;
   }

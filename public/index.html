@@ -78,8 +78,13 @@
             </div>
 
             <div class="auth-card" id="authCard">
-              <strong id="authTitle">만들 때만 로그인이 필요해</strong>
-              <p id="authSubtitle">어떤 사이트인지 먼저 둘러봐도 돼. 네 OpenAI 키는 필요 없고, 로그인하면 오늘 한 장을 바로 만들 수 있어.</p>
+              <div class="auth-card__header">
+                <span class="auth-card__step">2</span>
+                <div>
+                  <strong id="authTitle">만들 때만 로그인이 필요해</strong>
+                  <p id="authSubtitle">한 줄을 적고 분위기를 고른 뒤, 아래 계정 중 하나로 로그인하면 바로 생성돼. 네 OpenAI 키는 필요 없어.</p>
+                </div>
+              </div>
               <div class="auth-actions" id="authActions">
                 <button type="button" class="share-btn" data-auth-provider="google">Google</button>
                 <button type="button" class="share-btn" data-auth-provider="kakao">Kakao</button>
@@ -146,6 +151,6 @@
     </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260430-login-copy"></script>
+  <script type="module" src="/app.js?v=20260430-login-state"></script>
 </body>
 </html>

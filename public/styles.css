@@ -276,6 +276,11 @@ textarea:focus {
   border-color: #c7e9b0;
 }
 
+.quota-card[data-state="login"] {
+  background: #fff7f0;
+  border-color: #ffb985;
+}
+
 .quota-card[data-state="eraser"] {
   background: #fff9ed;
   border-color: #ffcc80;
@@ -292,9 +297,43 @@ textarea:focus {
   margin-top: 24px;
   margin-bottom: 20px;
   padding: 18px;
-  border: 1px solid #ffe0c8;
+  border: 2px solid #ffe0c8;
   border-radius: var(--radius-sm);
   background: #fff7f0;
+}
+
+.auth-card[data-state="ready"] {
+  background: #f0f7f0;
+  border-color: #c7e9b0;
+}
+
+.auth-card[data-state="unavailable"] {
+  background: #f5f5f5;
+  border-color: #e0e0e0;
+}
+
+.auth-card.attention {
+  animation: authPulse 0.7s ease;
+}
+
+.auth-card__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.auth-card__step {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
 }
 
 .auth-card strong {
@@ -314,6 +353,12 @@ textarea:focus {
 .auth-actions {
   display: flex;
   gap: 8px;
+  margin-top: 14px;
+}
+
+@keyframes authPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 157, 108, 0.5); }
+  100% { box-shadow: 0 0 0 12px rgba(255, 157, 108, 0); }
 }
 
 .auth-badge--google { color: #4285f4; }
