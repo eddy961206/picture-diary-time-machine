@@ -19,6 +19,19 @@ test("buildDiaryPrompt accepts one tiny diary line", () => {
   assert.match(prompt, /Do not create beautiful anime/);
 });
 
+test("buildDiaryPrompt supports exact user text mode", () => {
+  const prompt = buildDiaryPrompt({
+    diary: "오늘은 회사에서 일이 많았다.\n집에 와서 라면을 먹었다.",
+    textMode: "exact",
+  });
+
+  assert.match(prompt, /Text mode: exact user text/);
+  assert.match(prompt, /Copy every Korean sentence/);
+  assert.match(prompt, /Do not summarize, rewrite/);
+  assert.match(prompt, /오늘은 회사에서 일이 많았다/);
+  assert.doesNotMatch(prompt, /Rewrite the diary text yourself/);
+});
+
 test("buildDiaryPrompt rejects empty daily note", () => {
   assert.throws(() => buildDiaryPrompt({ diary: "" }), {
     message: "오늘 한 줄만 써줘. 진짜 짧아도 괜찮아.",

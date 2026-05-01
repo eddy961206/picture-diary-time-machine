@@ -105,6 +105,10 @@ function validateRequiredInput(input) {
   }
 }
 
+function normalizeTextMode(value) {
+  return value === "exact" ? "exact" : "expand";
+}
+
 function normalizeSize(value) {
   const allowed = new Set(["1024x1024", "1024x1536", "1536x1024", "auto"]);
   return allowed.has(value) ? value : "1024x1536";
@@ -138,6 +142,8 @@ function buildDiaryPrompt(input) {
   const date = clean(input.date, "오늘");
   const weather = clean(input.weather, "맑음");
   const diary = cleanMultiline(input.diary, "오늘 별일은 없었지만 그래도 하루를 살았다.");
+  const textMode = normalizeTextMode(input.textMode);
+  const exactTextMode = textMode === "exact";
   const moodType = clean(input.moodType, "funny");
   const hasReference = Boolean(input.referenceImageDataUrl);
   const moodGuide = {
@@ -158,11 +164,18 @@ Core concept:
 - Weather field: ${weather}
 - Title field: infer a very short childish title from the note, like "라면을 먹었다", "회사에 갔다", "비를 맞았다".
 - Mood direction: ${moodGuide}
+- Text mode: ${exactTextMode ? "exact user text" : "AI-expanded child diary"}
 
-User's original tiny note:
+User input:
 ${diary}
 
-Rewrite the diary text yourself in Korean before drawing it:
+${exactTextMode ? `Use the user's diary text exactly as the handwritten diary body:
+- Copy every Korean sentence from the user input into the diary writing area.
+- Preserve the user's wording, line order, punctuation, and meaning.
+- Do not summarize, rewrite, add jokes, add new events, or make it more childish.
+- You may only wrap long lines naturally so they fit the printed diary lines.
+- The title field may be inferred briefly, but the diary body must be the user's exact text.
+- If the user wrote multiple lines, keep them as multiple handwritten lines in the same order.` : `Rewrite the diary text yourself in Korean before drawing it:
 - 4 to 6 very short lines.
 - Use simple elementary-school wording, not adult essay style.
 - It can gently collide adult reality with childlike wording.
@@ -174,7 +187,7 @@ Rewrite the diary text yourself in Korean before drawing it:
   맛있었다.
   다음에는 부자가 되고 싶다.
 - Keep it warm and funny, not meme-heavy.
-- Avoid polished literary phrasing.
+- Avoid polished literary phrasing.`}
 
 Visual requirements:
 - The result is NOT a clean digital poster. It is a phone photo of real paper.
@@ -353,7 +366,10 @@ function serveStatic(req, res) {
       return;
     }
     const ext = path.extname(requestedPath).toLowerCase();
-    res.writeHead(200, { "Content-Type": mimeTypes.get(ext) || "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": mimeTypes.get(ext) || "application/octet-stream",
+      "Cache-Control": ["html", "js", "css"].includes(ext.slice(1)) ? "no-cache" : "public, max-age=3600",
+    });
     res.end(data);
   });
 }

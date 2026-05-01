@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260501-oauth-fix";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260501-text-mode";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -18,6 +18,9 @@ import {
 } from "./ritual-state.js";
 
 const form = document.querySelector("#diaryForm");
+const diaryTextarea = form.elements.diary;
+const textModeInputs = document.querySelectorAll("input[name='textMode']");
+const diaryModeHint = document.querySelector("#diaryModeHint");
 const photoInput = document.querySelector("#photo");
 const photoPreviewWrap = document.querySelector("#photoPreviewWrap");
 const photoPreview = document.querySelector("#photoPreview");
@@ -81,11 +84,26 @@ function formData() {
 }
 
 function validateRequiredInputs() {
-  const diary = form.elements.diary;
-  if (String(diary.value || "").trim()) return true;
-  diary.reportValidity();
+  if (String(diaryTextarea.value || "").trim()) return true;
+  diaryTextarea.reportValidity();
   setLog("오늘 있었던 일을 한 줄만 써줘.", "error");
   return false;
+}
+
+function currentTextMode() {
+  return form.elements.textMode?.value === "exact" ? "exact" : "expand";
+}
+
+function updateTextModeUi() {
+  const exactMode = currentTextMode() === "exact";
+  if (diaryModeHint) {
+    diaryModeHint.textContent = exactMode
+      ? "입력한 문구를 고치지 않고 그림일기 본문에 그대로 넣어달라고 요청해."
+      : "한 줄만 써도 AI가 초등학생 그림일기 문장으로 늘려줘.";
+  }
+  diaryTextarea.placeholder = exactMode
+    ? "예: 오늘은 회사에서 일이 많았다.\n집에 오면서 라면을 먹었다.\n조금 피곤했지만 맛있었다."
+    : "예: 퇴근하고 편의점 라면 먹음. 맛있었다.";
 }
 
 function setLog(message, tone = "normal") {
@@ -168,8 +186,9 @@ function updateRitualUi() {
   generateBtn.textContent = needsLogin ? "로그인 후 직접 만들기" : hasUsedFirst ? "다시 그리기 (지우개 찬스)" : "그림일기 제출하기";
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
   eraserChance.disabled = locked;
-  form.elements.diary.disabled = locked;
+  diaryTextarea.disabled = locked;
   photoInput.disabled = locked;
+  textModeInputs.forEach((input) => { input.disabled = locked; });
   form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
 
   streakTitle.textContent = getStreakReward(state.streak);
@@ -514,6 +533,10 @@ photoInput.addEventListener("change", async () => {
   setLog("사진을 일기장에 붙였어.");
 });
 
+textModeInputs.forEach((input) => {
+  input.addEventListener("change", updateTextModeUi);
+});
+
 async function getAccessToken() {
   if (!supabase) return "";
   const { data } = await supabase.auth.getSession();
@@ -825,3 +848,4 @@ form.addEventListener("submit", async (event) => {
 setCurrentImage(currentImageUrl, currentImageFormat);
 initAuth();
 updateRitualUi();
+updateTextModeUi();

@@ -81,7 +81,18 @@
 
             <div class="field">
               <label class="field__label">오늘 있었던 일</label>
-              <textarea name="diary" rows="4" placeholder="예: 퇴근하고 편의점 라면 먹음. 맛있었다." required></textarea>
+              <div class="text-mode-group" aria-label="일기 문구 방식">
+                <label>
+                  <input type="radio" name="textMode" value="expand" checked />
+                  <span>AI가 부풀리기</span>
+                </label>
+                <label>
+                  <input type="radio" name="textMode" value="exact" />
+                  <span>내 문구 그대로</span>
+                </label>
+              </div>
+              <textarea name="diary" rows="5" placeholder="예: 퇴근하고 편의점 라면 먹음. 맛있었다." required></textarea>
+              <p class="field__hint" id="diaryModeHint">한 줄만 써도 AI가 초등학생 그림일기 문장으로 늘려줘.</p>
             </div>
 
             <div class="field">
@@ -185,6 +196,6 @@
     </div>
   </main>
 
-  <script type="module" src="/app.js?v=20260501-oauth-fix"></script>
+  <script type="module" src="/app.js?v=20260501-text-mode"></script>
 </body>
 </html>
