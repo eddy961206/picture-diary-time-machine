@@ -16,7 +16,7 @@ import {
   SHARE_LINES,
   writeRitualState,
 } from "./lib/ritual-state.js";
-import { GENERATION_LOADING_LINES, GENERATION_STEPS } from "./lib/loading-copy.js";
+import { GENERATION_LOADING_LINES } from "./lib/loading-copy.js";
 
 const PENDING_SAVE_DB = "pictureDiaryPendingSave:v1";
 const PENDING_SAVE_STORE = "pending";
@@ -166,7 +166,6 @@ function App() {
   const isLocked = remaining <= 0;
   const hasGeneratedDataUrl = currentImageUrl.startsWith("data:");
   const loadingMessage = GENERATION_LOADING_LINES[loadingIndex % GENERATION_LOADING_LINES.length];
-  const activeStepIndex = Math.min(GENERATION_STEPS.length - 1, Math.floor(loadingIndex / 3));
   const shareText = `${SHARE_LINES[ritualState.generations % SHARE_LINES.length]} ${getSharePageUrl()}`;
 
   function updateForm(name, value) {
@@ -403,6 +402,9 @@ function App() {
     setIsGenerating(true);
     setLoadingIndex(0);
     setStep("generate");
+    window.requestAnimationFrame(() => {
+      document.querySelector(".result-display")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
     try {
       const accessToken = await getAccessToken();
       const requestData = buildRequestData();
@@ -710,21 +712,6 @@ function App() {
         </div>
       </main>
 
-      {isGenerating ? (
-        <div className="modal generation-modal" role="dialog" aria-modal="true" aria-labelledby="generationModalTitle">
-          <div className="modal__panel generation-modal__panel">
-            <div className="spinner"></div>
-            <h2 id="generationModalTitle">그림일기를 만들고 있어요</h2>
-            <p>{loadingMessage}</p>
-            <div className="generation-steps" aria-label="진행 상태">
-              {GENERATION_STEPS.map((item, index) => (
-                <span key={item} className={index <= activeStepIndex ? "active" : ""}>{item}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {saveLoginOpen ? (
         <AuthModal
           title="일기장에 붙일까요?"
@@ -936,6 +923,7 @@ function ResultPanel({
             <div className="loading-overlay">
               <div className="spinner"></div>
               <p>{loadingMessage}</p>
+              <small>보통 1분에서 1분 30초 정도 걸려요.</small>
             </div>
           ) : null}
         </div>
