@@ -324,13 +324,10 @@ function App() {
       setDiaryEntries([]);
       return;
     }
-    let query = client
-      .from("diary_entries")
-      .select("id, diary_date, weather, title, place, image_url, image_path, image_format, created_at")
-      .order("created_at", { ascending: false })
-      .limit(60);
-    query = bookId ? query.eq("book_id", bookId) : query.is("book_id", null);
-    const { data, error } = await query;
+    const { data, error } = await client.rpc("list_diary_entries_for_book", {
+      book_id_input: bookId || null,
+      limit_input: 60,
+    });
     if (error) {
       setDiaryEntries([]);
       pushLog("일기장을 가져오지 못했어요.", "error");
@@ -1251,6 +1248,8 @@ function ResultPanel({
 }
 
 function BookPage({ currentUser, authConfigured, entries, books, currentBookId, setCurrentBookId, onOpenEntry, onRefresh, onStartAuth }) {
+  const showAuthor = Boolean(currentBookId);
+
   return (
     <section className="page-stack">
       <div className="section-heading compact-heading">
@@ -1270,7 +1269,10 @@ function BookPage({ currentUser, authConfigured, entries, books, currentBookId, 
                 <img src={entry.image_url} alt={entry.title || "그림일기"} loading="lazy" />
               </button>
               <div className="diary-entry__body">
-                <div className="diary-entry__meta">{entry.diary_date || "날짜 없음"}</div>
+                <div className="diary-entry__meta">
+                  {showAuthor && entry.author_name ? `${entry.author_name} · ` : ""}
+                  {entry.diary_date || "날짜 없음"}
+                </div>
                 <h3>{entry.title || "오늘의 일기"}</h3>
               </div>
             </article>
