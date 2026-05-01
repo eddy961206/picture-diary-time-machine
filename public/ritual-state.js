@@ -7,15 +7,6 @@ export const SHARE_LINES = [
   "선생님 저 오늘도 살았어요",
 ];
 
-export const LOADING_LINES = [
-  "일기장 종이를 펴는 중이에요.",
-  "오늘 있었던 일을 한 줄씩 고르는 중이에요.",
-  "색연필이 삐뚤빼뚤 움직이는 중이에요.",
-  "빈칸에 제목을 적어보는 중이에요.",
-  "종이가 조금 구겨져도 괜찮게 다듬는 중이에요.",
-  "마지막 줄을 또박또박 쓰는 중이에요.",
-];
-
 export function getSeoulDateKey(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",

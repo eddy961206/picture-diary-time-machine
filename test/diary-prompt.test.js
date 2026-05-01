@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildDiaryPrompt, promptPayload } from "../api/_diary.mjs";
+import { buildDiaryPrompt, formatKoreanDiaryDate, promptPayload } from "../api/_diary.mjs";
 
 function createRequest(body) {
   return { body };
@@ -17,6 +17,23 @@ test("buildDiaryPrompt accepts one tiny diary line", () => {
   assert.match(prompt, /라면을 먹었다/);
   assert.match(prompt, /Korean elementary school 2nd grade boy/);
   assert.match(prompt, /Do not create beautiful anime/);
+  assert.doesNotMatch(prompt, /Date field: 오늘/);
+  assert.match(prompt, /Never write “오늘” in the date field/);
+});
+
+test("buildDiaryPrompt uses explicit Korean date format and optional header fields", () => {
+  assert.equal(formatKoreanDiaryDate(new Date("2026-05-01T02:00:00.000Z")), "2026년 05월 01일 금요일");
+
+  const prompt = buildDiaryPrompt({
+    diary: "퇴근하고 비를 맞았다",
+    date: "2026년 05월 01일 금요일",
+    weather: "비",
+    title: "비 맞은 날",
+  });
+
+  assert.match(prompt, /Date field: write exactly “2026년 05월 01일 금요일”/);
+  assert.match(prompt, /Weather field: write exactly “비”/);
+  assert.match(prompt, /Title field: write exactly “비 맞은 날”/);
 });
 
 test("buildDiaryPrompt supports exact user text mode", () => {

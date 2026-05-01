@@ -79,6 +79,18 @@ function normalizeFormat(value) {
   return allowed.has(value) ? value : "png";
 }
 
+export function formatKoreanDiaryDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "long",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}년 ${values.month}월 ${values.day}일 ${values.weekday}`;
+}
+
 function parseDataUrl(dataUrl) {
   if (!dataUrl) return null;
   const match = String(dataUrl).match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([A-Za-z0-9+/=\n\r]+)$/);
@@ -94,8 +106,9 @@ function parseDataUrl(dataUrl) {
 export function buildDiaryPrompt(input) {
   validateRequiredInput(input);
 
-  const date = clean(input.date, "오늘");
-  const weather = clean(input.weather, "맑음");
+  const date = clean(input.date, formatKoreanDiaryDate());
+  const weather = clean(input.weather, "");
+  const title = clean(input.title, "");
   const diary = cleanMultiline(input.diary, "오늘 별일은 없었지만 그래도 하루를 살았다.");
   const textMode = normalizeTextMode(input.textMode);
   const exactTextMode = textMode === "exact";
@@ -115,9 +128,9 @@ Core concept:
 - Turn an ordinary adult day into a 2010-2013 Korean elementary-school vacation homework picture diary.
 - Student persona: a Korean elementary school 2nd grade boy.
 - Page type: Korean “그림일기” worksheet with printed boxes for 날짜, 날씨, 제목, 그림, and 일기 lines.
-- Date field: ${date}
-- Weather field: ${weather}
-- Title field: infer a very short childish title from the note, like "라면을 먹었다", "회사에 갔다", "비를 맞았다".
+- Date field: write exactly “${date}”.
+- Weather field: ${weather ? `write exactly “${weather}”.` : "infer one short Korean weather word from the note if possible; otherwise write “맑음”."}
+- Title field: ${title ? `write exactly “${title}”.` : "infer a very short childish title from the note, like “라면을 먹었다”, “회사에 갔다”, “비를 맞았다”."}
 - Mood direction: ${moodGuide}
 - Text mode: ${exactTextMode ? "exact user text" : "AI-expanded child diary"}
 
@@ -129,7 +142,7 @@ ${exactTextMode ? `Use the user's diary text exactly as the handwritten diary bo
 - Preserve the user's wording, line order, punctuation, and meaning.
 - Do not summarize, rewrite, add jokes, add new events, or make it more childish.
 - You may only wrap long lines naturally so they fit the printed diary lines.
-- The title field may be inferred briefly, but the diary body must be the user's exact text.
+- The title field must follow the Title field instruction above, but the diary body must be the user's exact text.
 - If the user wrote multiple lines, keep them as multiple handwritten lines in the same order.` : `Rewrite the diary text yourself in Korean before drawing it:
 - 4 to 6 very short lines.
 - Use simple elementary-school wording, not adult essay style.
@@ -151,6 +164,8 @@ Visual requirements:
 - Draw the main illustration as a child's crayon/color-pencil drawing: naive proportions, uneven coloring, colors outside the lines, simple sun/trees/people/objects, awkward body proportions, imperfect lines, childlike perspective.
 - The diary lines should be handwritten in Korean pencil, large and uneven, legible but juvenile.
 - Make the Korean short, simple, and plausible for a young child.
+- The 날짜 field must contain the exact date above in the form “YYYY년 MM월 DD일 X요일”. Never write “오늘” in the date field.
+- The 날씨 and 제목 fields must be filled, even when the user left those options blank.
 - Preserve the feeling of a Korean 2010s school homework notebook photographed with a phone.
 - Keep the page portrait-oriented, similar to a Korean school workbook page photographed at a slight angle.
 

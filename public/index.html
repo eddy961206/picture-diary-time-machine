@@ -93,6 +93,23 @@
               <textarea name="diary" rows="5" placeholder="한 줄만 적어도 알아서 일기장 문장으로 만들어줄게요." required></textarea>
             </div>
 
+            <details class="optional-diary-fields">
+              <summary>
+                제목이랑 날씨도 직접 정할래요
+                <span>선택</span>
+              </summary>
+              <div class="optional-diary-fields__grid">
+                <label class="field compact-field">
+                  <span class="field__label">제목 <em>선택</em></span>
+                  <input type="text" name="title" maxlength="40" placeholder="비워두면 어울리게 적어줘요." autocomplete="off" />
+                </label>
+                <label class="field compact-field">
+                  <span class="field__label">날씨 <em>선택</em></span>
+                  <input type="text" name="weather" maxlength="20" placeholder="예: 맑음, 흐림, 비" autocomplete="off" />
+                </label>
+              </div>
+            </details>
+
             <div class="field">
               <label class="field__label">그날의 사진 <em>없어도 돼요</em></label>
               <input type="file" id="photo" accept="image/png,image/jpeg,image/webp" />
@@ -219,6 +236,6 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=20260501-wait-modal"></script>
+  <script type="module" src="/app.js?v=20260501-diary-options"></script>
 </body>
 </html>

@@ -9,15 +9,17 @@ import {
   getSeoulDateKey,
   getStreakReward,
   getTodayRitualState,
-  LOADING_LINES,
   MAX_DAILY_GENERATIONS,
   saveSuccessfulGeneration as recordSuccessfulGeneration,
   SHARE_LINES,
   writeRitualState,
 } from "./ritual-state.js";
+import { GENERATION_LOADING_LINES, GENERATION_STEPS } from "./loading-copy.js";
 
 const form = document.querySelector("#diaryForm");
 const diaryTextarea = form.elements.diary;
+const weatherInput = form.elements.weather;
+const titleInput = form.elements.title;
 const textModeInputs = document.querySelectorAll("input[name='textMode']");
 const photoInput = document.querySelector("#photo");
 const photoPreviewWrap = document.querySelector("#photoPreviewWrap");
@@ -89,11 +91,24 @@ let generationLineTimer = 0;
 
 function formData() {
   const data = Object.fromEntries(new FormData(form).entries());
+  data.date = formatKoreanDiaryDate();
   data.referenceImageDataUrl = referenceImageDataUrl;
   data.size = "1024x1536";
   data.quality = "medium";
   data.outputFormat = "png";
   return data;
+}
+
+function formatKoreanDiaryDate(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "long",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}년 ${values.month}월 ${values.day}일 ${values.weekday}`;
 }
 
 function validateRequiredInputs() {
@@ -121,17 +136,21 @@ function setLog(message, tone = "normal") {
 }
 
 function setGenerationProgress(index) {
-  const message = LOADING_LINES[index % LOADING_LINES.length];
+  const message = GENERATION_LOADING_LINES[index % GENERATION_LOADING_LINES.length];
+  const activeStepIndex = Math.min(
+    GENERATION_STEPS.length - 1,
+    Math.floor(index / 3),
+  );
   if (loadingText) loadingText.textContent = message;
   if (generationModalText) generationModalText.textContent = message;
   generationStepItems.forEach((item, itemIndex) => {
-    item.classList.toggle("active", itemIndex <= index % generationStepItems.length);
+    item.classList.toggle("active", itemIndex <= activeStepIndex);
   });
 }
 
 function openGenerationModal() {
   if (!generationModal) return;
-  let index = getTodayRitualState().generations % LOADING_LINES.length;
+  let index = 0;
   setGenerationProgress(index);
   generationModal.classList.remove("hidden");
   window.clearInterval(generationLineTimer);
@@ -284,6 +303,8 @@ function updateRitualUi() {
   eraserChance.classList.toggle("hidden", !hasUsedFirst || locked);
   eraserChance.disabled = locked;
   diaryTextarea.disabled = locked;
+  if (titleInput) titleInput.disabled = locked;
+  if (weatherInput) weatherInput.disabled = locked;
   photoInput.disabled = locked;
   textModeInputs.forEach((input) => { input.disabled = locked; });
   form.querySelectorAll("input[name='moodType']").forEach((input) => { input.disabled = locked; });
