@@ -14,6 +14,28 @@ export function getSharePageUrl(location = globalThis.location) {
   return `${location.origin}${location.pathname}`;
 }
 
+export function normalizeInviteCode(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 12);
+}
+
+export function getInviteCodeFromUrl(location = globalThis.location) {
+  const params = new URLSearchParams(location.search || "");
+  return normalizeInviteCode(
+    params.get("invite") || params.get("invite_code") || params.get("code"),
+  );
+}
+
+export function buildInviteUrl(inviteCode, location = globalThis.location) {
+  const url = new URL(getSharePageUrl(location));
+  const code = normalizeInviteCode(inviteCode);
+  if (code) url.searchParams.set("invite", code);
+  return url.toString();
+}
+
 export function buildSocialShareUrl(target, { text, url }) {
   const builder = shareTargets[target];
   if (!builder) throw new Error("지원하지 않는 공유 대상입니다.");

@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 
 import {
   buildSocialShareUrl,
+  buildInviteUrl,
   createImageFileFromDataUrl,
   createImageFilename,
+  getInviteCodeFromUrl,
   getSharePageUrl,
+  normalizeInviteCode,
 } from "../public/share-utils.js";
 
 test("createImageFilename uses timestamp and extension", () => {
@@ -22,6 +25,27 @@ test("getSharePageUrl strips hash and query from the current page", () => {
   };
 
   assert.equal(getSharePageUrl(location), "https://example.com/diary");
+});
+
+test("buildInviteUrl adds a sanitized invite code to the share page", () => {
+  const location = {
+    origin: "https://example.com",
+    pathname: "/diary",
+    search: "?draft=1",
+    hash: "#result",
+  };
+
+  assert.equal(buildInviteUrl(" ab-cd 12 ", location), "https://example.com/diary?invite=ABCD12");
+});
+
+test("getInviteCodeFromUrl accepts invite aliases", () => {
+  assert.equal(getInviteCodeFromUrl({ search: "?invite=ab12-cd" }), "AB12CD");
+  assert.equal(getInviteCodeFromUrl({ search: "?invite_code=xy987" }), "XY987");
+  assert.equal(getInviteCodeFromUrl({ search: "?code=hello999999999" }), "HELLO9999999");
+});
+
+test("normalizeInviteCode removes unsupported characters", () => {
+  assert.equal(normalizeInviteCode(" 초대-ab12!! "), "AB12");
 });
 
 test("buildSocialShareUrl creates encoded SNS links for X and Threads", () => {

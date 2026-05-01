@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  buildInviteUrl,
   buildSocialShareUrl,
   createImageFileFromDataUrl,
   createImageFilename,
+  getInviteCodeFromUrl,
   getSharePageUrl,
+  normalizeInviteCode,
 } from "./lib/share-utils.js";
 import { getSupabaseClient, getSupabaseConfig } from "./lib/supabase-client.js";
 import {
@@ -21,7 +24,51 @@ import { GENERATION_LOADING_LINES } from "./lib/loading-copy.js";
 const PENDING_SAVE_DB = "pictureDiaryPendingSave:v1";
 const PENDING_SAVE_STORE = "pending";
 const PENDING_SAVE_KEY = "latest";
+const PENDING_INVITE_KEY = "pictureDiaryPendingInvite:v1";
 const sampleImage = "/sample-output.png";
+
+function readPendingInviteCode() {
+  try {
+    return normalizeInviteCode(localStorage.getItem(PENDING_INVITE_KEY));
+  } catch {
+    return "";
+  }
+}
+
+function writePendingInviteCode(code) {
+  const normalized = normalizeInviteCode(code);
+  try {
+    if (normalized) localStorage.setItem(PENDING_INVITE_KEY, normalized);
+  } catch {
+    // localStorage can be blocked in private contexts; invite still stays in state.
+  }
+  return normalized;
+}
+
+function clearPendingInviteCode() {
+  try {
+    localStorage.removeItem(PENDING_INVITE_KEY);
+  } catch {
+    // no-op
+  }
+}
+
+function getInitialInviteCode() {
+  if (typeof window === "undefined") return "";
+  return getInviteCodeFromUrl(window.location) || readPendingInviteCode();
+}
+
+function removeInviteQueryFromUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  const hadInvite = ["invite", "invite_code", "code"].some((key) => url.searchParams.has(key));
+  if (!hadInvite) return;
+  url.searchParams.delete("invite");
+  url.searchParams.delete("invite_code");
+  url.searchParams.delete("code");
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, document.title, nextUrl);
+}
 
 function formatKoreanDiaryDate(date = new Date()) {
   const parts = new Intl.DateTimeFormat("ko-KR", {
@@ -124,7 +171,8 @@ function userFacingGenerateError(error) {
 }
 
 function App() {
-  const [page, setPage] = useState("make");
+  const initialInviteCodeRef = useRef(getInitialInviteCode());
+  const [page, setPage] = useState(initialInviteCodeRef.current ? "share" : "make");
   const [supabase, setSupabase] = useState(null);
   const [authConfigured, setAuthConfigured] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -154,7 +202,7 @@ function App() {
   const [statusModal, setStatusModal] = useState(null);
   const [saveLoginOpen, setSaveLoginOpen] = useState(false);
   const [bookName, setBookName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(initialInviteCodeRef.current);
   const restoringPendingSave = useRef(false);
 
   const currentBook = useMemo(
@@ -376,6 +424,7 @@ function App() {
       return;
     }
     if (saveAfterLogin) await storeCurrentImageForLoginSave();
+    if (inviteCode) writePendingInviteCode(inviteCode);
     if (provider === "kakao") {
       window.location.href = "/api/kakao-login";
       return;
@@ -504,30 +553,55 @@ function App() {
     pushLog("공유 일기장을 만들었어요.");
   }
 
-  async function handleJoinBook(event) {
-    event.preventDefault();
-    if (!supabase || !currentUser) {
-      pushLog("먼저 로그인해주세요.", "error");
-      return;
-    }
-    const code = inviteCode.trim().toUpperCase();
+  async function acceptInviteCode(rawCode, {
+    client = supabase,
+    user = currentUser,
+    auto = false,
+  } = {}) {
+    const code = normalizeInviteCode(rawCode);
     if (!code) {
-      pushLog("초대 코드를 입력해주세요.", "error");
-      return;
+      if (!auto) pushLog("초대 코드를 입력해주세요.", "error");
+      return false;
     }
-    pushLog("초대 코드를 확인하는 중이에요...");
-    const { data, error } = await supabase.rpc("join_diary_book_by_code", {
+
+    setInviteCode(code);
+    setPage("share");
+    if (!client || !user) {
+      writePendingInviteCode(code);
+      if (!auto) pushLog("로그인하면 초대받은 일기장에 들어갈 수 있어요.");
+      return false;
+    }
+
+    pushLog(auto ? "초대받은 일기장에 들어가는 중이에요..." : "초대 코드를 확인하는 중이에요...");
+    const { data, error } = await client.rpc("join_diary_book_by_code", {
       invite_code_input: code,
     });
     if (error || !data) {
+      clearPendingInviteCode();
       pushLog("초대 코드로 일기장을 찾지 못했어요.", "error");
-      return;
+      return false;
     }
+
     setInviteCode("");
+    clearPendingInviteCode();
+    removeInviteQueryFromUrl();
     setCurrentBookId(data);
-    await loadDiaryBooks();
-    await loadDiaryEntries(supabase, currentUser, data);
-    pushLog("공유 일기장에 들어왔어요.");
+    await loadDiaryBooks(client, user);
+    await loadDiaryEntries(client, user, data);
+    setPage("book");
+    pushLog(auto ? "초대받은 일기장에 들어왔어요." : "공유 일기장에 들어왔어요.");
+    return true;
+  }
+
+  async function acceptPendingInviteIfNeeded(client = supabase, user = currentUser) {
+    const code = readPendingInviteCode();
+    if (!code || !client || !user) return false;
+    return acceptInviteCode(code, { client, user, auto: true });
+  }
+
+  async function handleJoinBook(event) {
+    event.preventDefault();
+    await acceptInviteCode(inviteCode);
   }
 
   async function handleShare(target) {
@@ -560,10 +634,11 @@ function App() {
 
   async function shareInvite(book, target) {
     if (!book) return;
+    const inviteUrl = buildInviteUrl(book.invite_code);
     const text = [
-      `"${book.name}" 그림일기장 같이 쓰자.`,
+      `"${book.name}" 그림일기장 같이 볼래?`,
       `초대 코드: ${book.invite_code}`,
-      getSharePageUrl(),
+      inviteUrl,
     ].join("\n");
 
     try {
@@ -574,7 +649,10 @@ function App() {
       }
 
       if (target === "x") {
-        const url = buildSocialShareUrl("x", { text, url: getSharePageUrl() });
+        const url = buildSocialShareUrl("x", {
+          text: `"${book.name}" 그림일기장 같이 볼래? 초대 코드: ${book.invite_code}`,
+          url: inviteUrl,
+        });
         window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
         return;
       }
@@ -583,7 +661,7 @@ function App() {
         await navigator.share({
           title: `${book.name} 그림일기장`,
           text,
-          url: getSharePageUrl(),
+          url: inviteUrl,
         });
         return;
       }
@@ -616,14 +694,23 @@ function App() {
       const authError = params.get("error_description") || params.get("error");
       if (!completedKakaoLogin && authError) pushLog("로그인 중에 문제가 생겼어.", "error");
       if (authError) window.history.replaceState({}, document.title, window.location.pathname);
+      const inviteFromUrl = getInviteCodeFromUrl(window.location);
+      if (inviteFromUrl) {
+        writePendingInviteCode(inviteFromUrl);
+        setInviteCode(inviteFromUrl);
+        setPage("share");
+        removeInviteQueryFromUrl();
+      }
       await loadDiaryBooks(client, user);
-      await loadDiaryEntries(client, user, "");
+      const acceptedInvite = user ? await acceptPendingInviteIfNeeded(client, user) : false;
+      if (!acceptedInvite) await loadDiaryEntries(client, user, "");
       if (user) await restorePendingSaveIfNeeded(user, client);
       const listener = client.auth.onAuthStateChange(async (_event, session) => {
         const nextUser = session?.user || null;
         setCurrentUser(nextUser);
         await loadDiaryBooks(client, nextUser);
-        await loadDiaryEntries(client, nextUser, "");
+        const acceptedNextInvite = nextUser ? await acceptPendingInviteIfNeeded(client, nextUser) : false;
+        if (!acceptedNextInvite) await loadDiaryEntries(client, nextUser, "");
         if (nextUser) await restorePendingSaveIfNeeded(nextUser, client);
       });
       unsubscribe = () => listener.data.subscription.unsubscribe();
@@ -1051,7 +1138,18 @@ function SharePage({
         <h2>일기장 서로 공유하기</h2>
         <p>초대 코드를 받은 사람은 같은 일기장에서 서로의 그림일기를 볼 수 있어요.</p>
         {!currentUser ? (
-          <AuthPanel authConfigured={authConfigured} onStartAuth={onStartAuth} />
+          <div className="share-layout">
+            {inviteCode ? (
+              <div className="invite-card pending-invite">
+                <div>
+                  <span className="invite-card__label">받은 초대 코드</span>
+                  <strong className="invite-card__code">{inviteCode}</strong>
+                  <p>로그인하면 이 일기장에 바로 들어가요.</p>
+                </div>
+              </div>
+            ) : null}
+            <AuthPanel authConfigured={authConfigured} onStartAuth={onStartAuth} />
+          </div>
         ) : (
           <div className="share-layout">
             <div className="share-forms">
@@ -1060,7 +1158,7 @@ function SharePage({
                 <button type="submit" className="share-btn">만들기</button>
               </form>
               <form className="book-inline-form" onSubmit={onJoinBook}>
-                <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(event.target.value.toUpperCase())} />
+                <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
                 <button type="submit" className="share-btn">들어가기</button>
               </form>
             </div>
