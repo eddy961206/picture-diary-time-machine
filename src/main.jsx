@@ -587,6 +587,37 @@ function App() {
     pushLog("공유 일기장을 만들었어요.");
   }
 
+  async function handleDeleteEmptyBook(book) {
+    if (!supabase || !currentUser || !book) {
+      pushLog("먼저 로그인해주세요.", "error");
+      return;
+    }
+    if (book.owner_id !== currentUser.id) {
+      pushLog("내가 만든 공유 일기장만 지울 수 있어요.", "error");
+      return;
+    }
+    const confirmed = window.confirm(
+      `"${book.name}" 공유 일기장을 지울까?\n초대받은 사람이나 붙인 일기가 있으면 지워지지 않아요.`
+    );
+    if (!confirmed) return;
+
+    pushLog("빈 공유 일기장을 정리하는 중이에요...");
+    const { data, error } = await supabase.rpc("delete_empty_diary_book", {
+      book_id_input: book.id,
+    });
+    if (error || !data) {
+      pushLog("이미 사용된 공유 일기장은 지울 수 없어요.", "error");
+      return;
+    }
+
+    if (currentBookId === book.id) {
+      setCurrentBookId("");
+      await loadDiaryEntries(supabase, currentUser, "");
+    }
+    await loadDiaryBooks();
+    pushLog("빈 공유 일기장을 지웠어요.");
+  }
+
   async function acceptInviteCode(rawCode, {
     client = supabase,
     user = currentUser,
@@ -894,6 +925,7 @@ function App() {
                 setPage("book");
               }}
               onShareInvite={shareInvite}
+              onDeleteBook={handleDeleteEmptyBook}
             />
           ) : null}
 
@@ -1232,6 +1264,7 @@ function SharePage({
   onStartAuth,
   onOpenBook,
   onShareInvite,
+  onDeleteBook,
 }) {
   return (
     <section className="page-stack">
@@ -1276,6 +1309,11 @@ function SharePage({
                       <IconShareButton target="instagram" label={`${book.name} Instagram 초대`} onClick={() => onShareInvite(book, "instagram")} />
                       <IconShareButton target="copy" label={`${book.name} 초대 링크 복사`} onClick={() => onShareInvite(book, "copy")} />
                     </div>
+                    {book.owner_id === currentUser?.id ? (
+                      <button type="button" className="btn--ghost mini shared-book-card__delete" onClick={() => onDeleteBook(book)}>
+                        안 쓸 일기장 지우기
+                      </button>
+                    ) : null}
                   </details>
                 ))}
               </div>
@@ -1294,7 +1332,7 @@ function SharePage({
               <div className="share-step-card__body">
                   <form className="book-inline-form" onSubmit={onCreateBook}>
                     <input type="text" value={bookName} maxLength="30" placeholder="예: 우리 가족 그림일기" onChange={(event) => setBookName(event.target.value)} />
-                    <button type="submit" className="share-btn">초대 코드 만들기</button>
+                    <button type="submit" className="share-btn">공유 일기장 만들기</button>
                   </form>
               </div>
             </details>

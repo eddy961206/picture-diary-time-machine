@@ -989,6 +989,11 @@ select:disabled {
   gap: 8px;
 }
 
+.shared-book-card__delete {
+  margin-top: 12px;
+  color: #9f3a2b;
+}
+
 /* Result Area */
 .result-display {
   position: relative;
