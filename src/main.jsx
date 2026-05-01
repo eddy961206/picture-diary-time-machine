@@ -558,6 +558,44 @@ function App() {
     }
   }
 
+  async function shareInvite(book, target) {
+    if (!book) return;
+    const text = [
+      `"${book.name}" 그림일기장 같이 쓰자.`,
+      `초대 코드: ${book.invite_code}`,
+      getSharePageUrl(),
+    ].join("\n");
+
+    try {
+      if (target === "copy") {
+        await navigator.clipboard.writeText(text);
+        pushLog("초대 문구를 복사했어요.");
+        return;
+      }
+
+      if (target === "x") {
+        const url = buildSocialShareUrl("x", { text, url: getSharePageUrl() });
+        window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+        return;
+      }
+
+      if (navigator.share) {
+        await navigator.share({
+          title: `${book.name} 그림일기장`,
+          text,
+          url: getSharePageUrl(),
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(text);
+      pushLog("초대 문구를 복사했어요.");
+    } catch {
+      await navigator.clipboard.writeText(text).catch(() => {});
+      pushLog("초대 문구를 복사했어요.");
+    }
+  }
+
   useEffect(() => {
     syncRitualState();
     let unsubscribe = null;
@@ -613,7 +651,7 @@ function App() {
         <nav className="nav" aria-label="주요 메뉴">
           <button type="button" className={`nav__item ${page === "make" ? "active" : ""}`} onClick={() => setPage("make")}>만들기</button>
           <button type="button" className={`nav__item ${page === "book" ? "active" : ""}`} onClick={() => setPage("book")}>내 일기장</button>
-          <button type="button" className={`nav__item ${page === "share" ? "active" : ""}`} onClick={() => setPage("share")}>같이 쓰기</button>
+          <button type="button" className={`nav__item ${page === "share" ? "active" : ""}`} onClick={() => setPage("share")}>일기장 서로 공유하기</button>
         </nav>
       </aside>
 
@@ -624,7 +662,7 @@ function App() {
               {[
                 ["make", "만들기"],
                 ["book", "일기장"],
-                ["share", "같이 쓰기"],
+                ["share", "일기장 서로 공유하기"],
               ].map(([key, label]) => (
                 <button key={key} type="button" className={page === key ? "active" : ""} onClick={() => setPage(key)}>{label}</button>
               ))}
@@ -662,6 +700,7 @@ function App() {
               currentStamp={currentStamp}
               setCurrentStamp={setCurrentStamp}
               currentBook={currentBook}
+              isSampleImage={currentImageUrl === sampleImage}
               onGenerate={handleGenerate}
               onPhotoChange={handlePhotoChange}
               onSave={handleSaveDiary}
@@ -700,11 +739,11 @@ function App() {
               onCreateBook={handleCreateBook}
               onJoinBook={handleJoinBook}
               onStartAuth={startAuth}
-              onCopyInvite={async () => {
-                if (!currentBook) return;
-                await navigator.clipboard.writeText(currentBook.invite_code);
-                pushLog("초대 코드를 복사했어요.");
+              onOpenBook={(bookId) => {
+                setCurrentBookId(bookId);
+                setPage("book");
               }}
+              onShareInvite={shareInvite}
             />
           ) : null}
 
@@ -756,6 +795,7 @@ function MakePage({
   currentStamp,
   setCurrentStamp,
   currentBook,
+  isSampleImage,
   onGenerate,
   onPhotoChange,
   onSave,
@@ -885,6 +925,7 @@ function MakePage({
             : "아직 붙일 그림일기가 없어요."}
           streakTitle={getStreakReward(ritualState.streak)}
           streakText={ritualState.streak ? `${ritualState.streak}일째 일기장을 채우는 중이에요.` : "오늘 한 장을 내면 기록이 시작돼요."}
+          isSampleImage={isSampleImage}
         />
       </div>
     </section>
@@ -912,6 +953,7 @@ function ResultPanel({
   saveHint,
   streakTitle,
   streakText,
+  isSampleImage,
 }) {
   return (
     <section className="result">
@@ -919,6 +961,7 @@ function ResultPanel({
         <h2>오늘의 일기</h2>
         <div className="result-display">
           <img src={currentImageUrl} alt="생성 결과" />
+          {isSampleImage ? <span className="sample-badge">샘플</span> : null}
           {isGenerating ? (
             <div className="loading-overlay">
               <div className="spinner"></div>
@@ -985,34 +1028,75 @@ function BookPage({ currentUser, authConfigured, entries, books, currentBookId, 
   );
 }
 
-function SharePage({ currentUser, authConfigured, books, currentBook, bookName, setBookName, inviteCode, setInviteCode, onCreateBook, onJoinBook, onStartAuth, onCopyInvite }) {
+function SharePage({
+  currentUser,
+  authConfigured,
+  books,
+  currentBook,
+  bookName,
+  setBookName,
+  inviteCode,
+  setInviteCode,
+  onCreateBook,
+  onJoinBook,
+  onStartAuth,
+  onOpenBook,
+  onShareInvite,
+}) {
+  const inviteBook = currentBook || books[0] || null;
+
   return (
     <section className="page-stack">
       <div className="card classroom">
-        <h2>같이 쓰는 일기장</h2>
-        <p>초대 코드 하나로 가까운 사람끼리만 같은 일기장을 볼 수 있어요.</p>
+        <h2>일기장 서로 공유하기</h2>
+        <p>초대 코드를 받은 사람은 같은 일기장에서 서로의 그림일기를 볼 수 있어요.</p>
         {!currentUser ? (
           <AuthPanel authConfigured={authConfigured} onStartAuth={onStartAuth} />
         ) : (
           <div className="share-layout">
-            <form className="book-inline-form" onSubmit={onCreateBook}>
-              <input type="text" value={bookName} maxLength="30" placeholder="공유 일기장 이름" onChange={(event) => setBookName(event.target.value)} />
-              <button type="submit" className="share-btn">만들기</button>
-            </form>
-            <form className="book-inline-form" onSubmit={onJoinBook}>
-              <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(event.target.value.toUpperCase())} />
-              <button type="submit" className="share-btn">들어가기</button>
-            </form>
-            <div className="book-card">
-              <strong>{currentBook ? currentBook.name : "나만 보기"}</strong>
-              <p>{currentBook ? `초대 코드 ${currentBook.invite_code}` : "공유 일기장을 만들거나 초대 코드로 들어가면 여기에 보여요."}</p>
-              <button type="button" className="btn--ghost mini" disabled={!currentBook} onClick={onCopyInvite}>초대 코드 복사</button>
+            <div className="share-forms">
+              <form className="book-inline-form" onSubmit={onCreateBook}>
+                <input type="text" value={bookName} maxLength="30" placeholder="공유 일기장 이름" onChange={(event) => setBookName(event.target.value)} />
+                <button type="submit" className="share-btn">만들기</button>
+              </form>
+              <form className="book-inline-form" onSubmit={onJoinBook}>
+                <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(event.target.value.toUpperCase())} />
+                <button type="submit" className="share-btn">들어가기</button>
+              </form>
             </div>
-            {books.length ? (
-              <div className="classroom-board">
-                {books.map((book) => <span key={book.id}>{book.name}</span>)}
+
+            <div className="invite-card">
+              <div>
+                <span className="invite-card__label">초대 코드</span>
+                <strong className="invite-card__code">{inviteBook ? inviteBook.invite_code : "아직 없음"}</strong>
+                <p>{inviteBook ? `"${inviteBook.name}" 일기장으로 초대해요.` : "공유 일기장을 만들면 초대 버튼이 바로 열려요."}</p>
               </div>
-            ) : null}
+              <div className="invite-actions" aria-label="초대 공유">
+                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "kakao")}>카톡</button>
+                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "x")}>X</button>
+                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "instagram")}>Insta</button>
+                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "copy")}>복사</button>
+              </div>
+            </div>
+
+            {books.length ? (
+              <div className="shared-book-list">
+                {books.map((book) => (
+                  <article className={`shared-book-card ${currentBook?.id === book.id ? "selected" : ""}`} key={book.id}>
+                    <div>
+                      <strong>{book.name}</strong>
+                      <p>초대 코드 {book.invite_code}</p>
+                    </div>
+                    <div className="shared-book-card__actions">
+                      <button type="button" className="btn--ghost mini" onClick={() => onOpenBook(book.id)}>일기 보기</button>
+                      <button type="button" className="btn--ghost mini" onClick={() => onShareInvite(book, "kakao")}>초대</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">공유 일기장을 만들거나 받은 초대 코드로 들어가면 여기에 모여요.</div>
+            )}
           </div>
         )}
       </div>
