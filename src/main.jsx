@@ -312,7 +312,7 @@ function App() {
       .select("id, name, invite_code, owner_id, created_at")
       .order("created_at", { ascending: true });
     if (error) {
-      pushLog("공유 일기장을 가져오지 못했어요.", "error");
+      pushLog("서로 보기 그룹을 가져오지 못했어요.", "error");
       return [];
     }
     setDiaryBooks(data || []);
@@ -556,10 +556,10 @@ function App() {
     }
     const name = bookName.trim();
     if (!name) {
-      pushLog("공유 일기장 이름을 적어주세요.", "error");
+      pushLog("서로 보기 그룹 이름을 적어주세요.", "error");
       return;
     }
-    pushLog("공유 일기장을 만드는 중이에요...");
+    pushLog("서로 보기 그룹을 만드는 중이에요...");
     const bookId = crypto.randomUUID();
     const bookInsert = await supabase.from("diary_books").insert({
       id: bookId,
@@ -568,7 +568,7 @@ function App() {
       invite_code: createInviteCode(),
     });
     if (bookInsert.error) {
-      pushLog("공유 일기장을 만들지 못했어요.", "error");
+      pushLog("서로 보기 그룹을 만들지 못했어요.", "error");
       return;
     }
     const memberInsert = await supabase.from("diary_book_members").insert({
@@ -584,7 +584,7 @@ function App() {
     setCurrentBookId(bookId);
     await loadDiaryBooks();
     await loadDiaryEntries(supabase, currentUser, bookId);
-    pushLog("공유 일기장을 만들었어요.");
+    pushLog("서로 보기 그룹을 만들었어요.");
   }
 
   async function handleDeleteEmptyBook(book) {
@@ -593,20 +593,20 @@ function App() {
       return;
     }
     if (book.owner_id !== currentUser.id) {
-      pushLog("내가 만든 공유 일기장만 지울 수 있어요.", "error");
+      pushLog("내가 만든 보기 그룹만 지울 수 있어요.", "error");
       return;
     }
     const confirmed = window.confirm(
-      `"${book.name}" 공유 일기장을 지울까?\n초대받은 사람이나 붙인 일기가 있으면 지워지지 않아요.`
+      `"${book.name}" 보기 그룹을 지울까?\n초대받은 사람이나 붙인 일기가 있으면 지워지지 않아요.`
     );
     if (!confirmed) return;
 
-    pushLog("빈 공유 일기장을 정리하는 중이에요...");
+    pushLog("빈 보기 그룹을 정리하는 중이에요...");
     const { data, error } = await supabase.rpc("delete_empty_diary_book", {
       book_id_input: book.id,
     });
     if (error || !data) {
-      pushLog("이미 사용된 공유 일기장은 지울 수 없어요.", "error");
+      pushLog("이미 사용된 보기 그룹은 지울 수 없어요.", "error");
       return;
     }
 
@@ -615,7 +615,7 @@ function App() {
       await loadDiaryEntries(supabase, currentUser, "");
     }
     await loadDiaryBooks();
-    pushLog("빈 공유 일기장을 지웠어요.");
+    pushLog("빈 보기 그룹을 지웠어요.");
   }
 
   async function acceptInviteCode(rawCode, {
@@ -654,7 +654,7 @@ function App() {
     await loadDiaryBooks(client, user);
     await loadDiaryEntries(client, user, data);
     setPage("book");
-    pushLog(auto ? "초대받은 일기장에 들어왔어요." : "공유 일기장에 들어왔어요.");
+    pushLog(auto ? "초대받은 보기 그룹에 들어왔어요." : "서로 보기 그룹에 들어왔어요.");
     return true;
   }
 
@@ -832,7 +832,7 @@ function App() {
         <nav className="nav" aria-label="주요 메뉴">
           <button type="button" className={`nav__item ${page === "make" ? "active" : ""}`} onClick={() => setPage("make")}>만들기</button>
           <button type="button" className={`nav__item ${page === "book" ? "active" : ""}`} onClick={() => setPage("book")}>내 일기장</button>
-          <button type="button" className={`nav__item ${page === "share" ? "active" : ""}`} onClick={() => setPage("share")}>일기장 서로 공유하기</button>
+          <button type="button" className={`nav__item ${page === "share" ? "active" : ""}`} onClick={() => setPage("share")}>서로 일기 보기</button>
         </nav>
       </aside>
 
@@ -843,21 +843,21 @@ function App() {
               {[
                 ["make", "만들기"],
                 ["book", "일기장"],
-                ["share", "일기장 서로 공유하기"],
+                ["share", "서로 보기"],
               ].map(([key, label]) => (
                 <button key={key} type="button" className={page === key ? "active" : ""} onClick={() => setPage(key)}>{label}</button>
               ))}
             </nav>
             {currentUser ? (
-              <>
+              <div className="user-menu">
                 <div className="auth-badge">{providerLabel}님</div>
-                <button type="button" className="btn--ghost mini" onClick={async () => {
+                <button type="button" className="btn btn--ghost mini" onClick={async () => {
                   await supabase?.auth.signOut();
                   setCurrentUser(null);
                   setDiaryEntries([]);
                   setDiaryBooks([]);
-                }}>일기장 덮기</button>
-              </>
+                }}>로그아웃</button>
+              </div>
             ) : null}
           </header>
 
@@ -1124,10 +1124,35 @@ function RadioPill({ name, value, checked, disabled, onChange, children }) {
 }
 
 function ShareTargetIcon({ target }) {
+  if (target === "google") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="#4285F4" d="M22.1 12.2c0-.7-.1-1.3-.2-1.9H12v3.6h5.7a4.9 4.9 0 0 1-2.1 3.2v2.6H19c2-1.8 3.1-4.4 3.1-7.5Z" />
+        <path fill="#34A853" d="M12 22c2.8 0 5.2-.9 7-2.5l-3.4-2.6c-.9.6-2.1 1-3.6 1-2.8 0-5.1-1.9-5.9-4.4H2.6v2.7A10 10 0 0 0 12 22Z" />
+        <path fill="#FBBC05" d="M6.1 13.5a6 6 0 0 1 0-3.1V7.7H2.6a10 10 0 0 0 0 8.9l3.5-3.1Z" />
+        <path fill="#EA4335" d="M12 6.1c1.5 0 2.9.5 4 1.6l3-3A10 10 0 0 0 2.6 7.7l3.5 2.7C6.9 7.9 9.2 6.1 12 6.1Z" />
+      </svg>
+    );
+  }
   if (target === "kakao") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 4C6.9 4 3 7.1 3 11c0 2.5 1.6 4.7 4 5.9l-.7 2.8 3.3-1.9c.8.1 1.6.2 2.4.2 5.1 0 9-3.1 9-7s-3.9-7-9-7Z" />
+      </svg>
+    );
+  }
+  if (target === "naver") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M15.4 12.5 8.4 2H2v20h6.6V11.5l7 10.5H22V2h-6.6v10.5Z" />
+      </svg>
+    );
+  }
+  if (target === "trash") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 3h6l1 2h4v2H4V5h4l1-2Z" />
+        <path d="M6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9Zm4 2v8h2v-8h-2Zm4 0v8h2v-8h-2Z" />
       </svg>
     );
   }
@@ -1159,6 +1184,15 @@ function IconShareButton({ target, label, disabled = false, onClick }) {
   return (
     <button type="button" className={`icon-share-button icon-share-button--${target}`} disabled={disabled} onClick={onClick} aria-label={label} title={label}>
       <ShareTargetIcon target={target} />
+    </button>
+  );
+}
+
+function AuthProviderButton({ target, label, onClick }) {
+  return (
+    <button type="button" className={`auth-provider-button auth-provider-button--${target}`} onClick={onClick} aria-label={`${label} 로그인`} title={`${label} 로그인`}>
+      <ShareTargetIcon target={target} />
+      <span>{label}</span>
     </button>
   );
 }
@@ -1269,8 +1303,8 @@ function SharePage({
   return (
     <section className="page-stack">
       <div className="card classroom">
-        <h2>일기장 서로 공유하기</h2>
-        <p>초대 코드를 받은 사람은 같은 일기장에서 서로의 그림일기를 볼 수 있어요.</p>
+        <h2>서로 일기 보기</h2>
+        <p>초대 링크로 연결된 사람끼리 각자 만든 그림일기를 볼 수 있어요.</p>
         {!currentUser ? (
           <div className="share-layout">
             {inviteCode ? (
@@ -1293,46 +1327,46 @@ function SharePage({
                     <summary>
                       <span>
                         <strong>{book.name}</strong>
-                        <small>{currentBook?.id === book.id ? "보고 있는 일기장" : "공유 일기장"}</small>
+                        <small>{currentBook?.id === book.id ? "지금 보는 그룹" : "서로 보기 그룹"}</small>
                       </span>
                       <span className="shared-book-card__summary-actions">
-                        <button type="button" className="btn--ghost mini" onClick={(event) => {
+                        <button type="button" className="btn btn--ghost mini" onClick={(event) => {
                           event.preventDefault();
                           onOpenBook(book.id);
                         }}>일기 보기</button>
-                        <span className="share-btn mini">초대하기</span>
+                        <span className="share-pill mini">초대</span>
                       </span>
                     </summary>
-                    <div className="invite-actions invite-actions--inline" aria-label={`${book.name} 초대 공유`}>
-                      <IconShareButton target="kakao" label={`${book.name} 카카오톡 초대`} onClick={() => onShareInvite(book, "kakao")} />
-                      <IconShareButton target="x" label={`${book.name} X 초대`} onClick={() => onShareInvite(book, "x")} />
-                      <IconShareButton target="instagram" label={`${book.name} Instagram 초대`} onClick={() => onShareInvite(book, "instagram")} />
-                      <IconShareButton target="copy" label={`${book.name} 초대 링크 복사`} onClick={() => onShareInvite(book, "copy")} />
+                    <div className="shared-book-card__expanded">
+                      <div className="invite-actions invite-actions--inline" aria-label={`${book.name} 초대 공유`}>
+                        <IconShareButton target="kakao" label={`${book.name} 카카오톡 초대`} onClick={() => onShareInvite(book, "kakao")} />
+                        <IconShareButton target="x" label={`${book.name} X 초대`} onClick={() => onShareInvite(book, "x")} />
+                        <IconShareButton target="instagram" label={`${book.name} Instagram 초대`} onClick={() => onShareInvite(book, "instagram")} />
+                        <IconShareButton target="copy" label={`${book.name} 초대 링크 복사`} onClick={() => onShareInvite(book, "copy")} />
+                      </div>
+                      {book.owner_id === currentUser?.id ? (
+                        <IconShareButton target="trash" label={`${book.name} 빈 그룹 지우기`} onClick={() => onDeleteBook(book)} />
+                      ) : null}
                     </div>
-                    {book.owner_id === currentUser?.id ? (
-                      <button type="button" className="btn--ghost mini shared-book-card__delete" onClick={() => onDeleteBook(book)}>
-                        안 쓸 일기장 지우기
-                      </button>
-                    ) : null}
                   </details>
                 ))}
               </div>
             ) : (
-              <div className="empty-state">공유 일기장을 만들거나 받은 초대 코드로 들어가면 여기에 모여요.</div>
+              <div className="empty-state">서로 보기 그룹을 만들거나 초대 링크로 들어오면 여기에 보여.</div>
             )}
 
             <details className="share-step-card">
               <summary>
                 <span className="share-step-card__badge">+</span>
                 <span>
-                  <strong>새 공유 일기장 만들기</strong>
+                  <strong>새 서로 보기 그룹 만들기</strong>
                   <small>필요할 때만 새로 만들어요.</small>
                 </span>
               </summary>
               <div className="share-step-card__body">
                   <form className="book-inline-form" onSubmit={onCreateBook}>
                     <input type="text" value={bookName} maxLength="30" placeholder="예: 우리 가족 그림일기" onChange={(event) => setBookName(event.target.value)} />
-                    <button type="submit" className="share-btn">공유 일기장 만들기</button>
+                    <button type="submit" className="btn btn--primary mini">그룹 만들기</button>
                   </form>
               </div>
             </details>
@@ -1348,7 +1382,7 @@ function SharePage({
               <div className="share-step-card__body">
                   <form className="book-inline-form" onSubmit={onJoinBook}>
                     <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
-                    <button type="submit" className="share-btn">들어가기</button>
+                    <button type="submit" className="btn btn--primary mini">들어가기</button>
                   </form>
               </div>
             </details>
@@ -1366,14 +1400,14 @@ function AuthPanel({ authConfigured, onStartAuth }) {
         <span className="auth-card__step">1</span>
         <div>
           <strong>{authConfigured ? "로그인하면 일기장을 쓸 수 있어요." : "로그인 설정을 불러오지 못했어요."}</strong>
-          <p>{authConfigured ? "만든 그림일기를 저장하고 공유 일기장에 붙일 수 있어요." : "체험 생성은 가능하지만 저장은 사용할 수 없어요."}</p>
+          <p>{authConfigured ? "만든 그림일기를 저장하고 서로 볼 사람을 초대할 수 있어요." : "체험 생성은 가능하지만 저장은 사용할 수 없어요."}</p>
         </div>
       </div>
       {authConfigured ? (
         <div className="auth-actions">
-          <button type="button" className="share-btn" onClick={() => onStartAuth("google")}>Google</button>
-          <button type="button" className="share-btn" onClick={() => onStartAuth("kakao")}>Kakao</button>
-          <button type="button" className="share-btn" onClick={() => onStartAuth("custom:naver")}>Naver</button>
+          <AuthProviderButton target="google" label="Google" onClick={() => onStartAuth("google")} />
+          <AuthProviderButton target="kakao" label="Kakao" onClick={() => onStartAuth("kakao")} />
+          <AuthProviderButton target="naver" label="Naver" onClick={() => onStartAuth("custom:naver")} />
         </div>
       ) : null}
     </div>
@@ -1390,9 +1424,9 @@ function AuthModal({ title, description, onClose, onStartAuth }) {
         <h2 id="saveLoginTitle">{title}</h2>
         <p>{description}</p>
         <div className="auth-actions">
-          <button type="button" className="share-btn" onClick={() => onStartAuth("google")}>Google</button>
-          <button type="button" className="share-btn" onClick={() => onStartAuth("kakao")}>Kakao</button>
-          <button type="button" className="share-btn" onClick={() => onStartAuth("custom:naver")}>Naver</button>
+          <AuthProviderButton target="google" label="Google" onClick={() => onStartAuth("google")} />
+          <AuthProviderButton target="kakao" label="Kakao" onClick={() => onStartAuth("kakao")} />
+          <AuthProviderButton target="naver" label="Naver" onClick={() => onStartAuth("custom:naver")} />
         </div>
       </div>
     </div>

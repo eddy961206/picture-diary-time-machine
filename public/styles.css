@@ -41,6 +41,11 @@ button {
   font: inherit;
 }
 
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Sidebar */
 .sidebar {
   width: 240px;
@@ -609,6 +614,9 @@ select:disabled {
 .mini {
   flex: 0 0 auto;
   white-space: nowrap;
+  min-height: 36px;
+  padding: 9px 14px;
+  font-size: 12px;
 }
 
 /* Auth Card & Buttons */
@@ -671,9 +679,46 @@ select:disabled {
   margin-top: 14px;
 }
 
-.auth-badge--google { color: #4285f4; }
-.auth-badge--kakao { color: #fee500; background: #3c1e1e !important; }
-.auth-badge--naver { color: #03c75a; }
+.auth-provider-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(79, 53, 37, 0.1);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+}
+
+.auth-provider-button svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.auth-provider-button--kakao {
+  background: #fee500;
+  border-color: #fee500;
+  color: #191919;
+}
+
+.auth-provider-button--naver {
+  background: #03c75a;
+  border-color: #03c75a;
+  color: #fff;
+}
+
+.auth-provider-button--naver svg {
+  fill: currentColor;
+}
 
 /* Log and Status */
 #log {
@@ -874,9 +919,7 @@ select:disabled {
 }
 
 .invite-actions--inline {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(79, 53, 37, 0.08);
+  margin: 0;
 }
 
 .icon-share-button {
@@ -935,7 +978,13 @@ select:disabled {
   color: var(--ink);
 }
 
-.icon-share-button--copy svg {
+.icon-share-button--trash {
+  background: #fff0ec;
+  color: #b7442f;
+}
+
+.icon-share-button--copy svg,
+.icon-share-button--trash svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -989,9 +1038,14 @@ select:disabled {
   gap: 8px;
 }
 
-.shared-book-card__delete {
+.shared-book-card__expanded {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 12px;
-  color: #9f3a2b;
+  padding-top: 12px;
+  border-top: 1px solid rgba(79, 53, 37, 0.08);
 }
 
 /* Result Area */
@@ -1080,6 +1134,7 @@ select:disabled {
   cursor: pointer;
   transition: all 0.2s;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .btn--primary {
@@ -1101,11 +1156,24 @@ select:disabled {
   transform: none;
 }
 
+.btn--primary.mini {
+  width: auto;
+}
+
 .btn--ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #f0f0f0;
   color: var(--ink);
   font-size: 14px;
   padding: 12px 20px;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+  min-height: 40px;
 }
 
 .btn-group {
@@ -1164,7 +1232,8 @@ select:disabled {
   margin-top: 12px;
 }
 
-.share-btn {
+.share-btn,
+.share-pill {
   flex: 1;
   min-height: 40px;
   padding: 10px 14px;
@@ -1172,13 +1241,24 @@ select:disabled {
   border: 1px solid #eee;
   border-radius: 99px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
 }
 
 .share-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.share-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+  cursor: default;
 }
 
 .save-hint {
@@ -1270,13 +1350,25 @@ select:disabled {
   margin-bottom: 24px;
 }
 
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .auth-badge {
+  min-width: 0;
+  max-width: 160px;
   padding: 8px 16px;
   background: #fff;
   border-radius: 99px;
   font-size: 13px;
   font-weight: 700;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Utility */
@@ -1302,12 +1394,14 @@ select:disabled {
     top: 0;
     z-index: 20;
     justify-content: space-between;
+    gap: 8px;
     padding: 8px 0;
     background: var(--paper-bg);
   }
 
   .page-tabs {
     display: flex;
+    min-width: 0;
     gap: 6px;
     padding: 4px;
     border-radius: 999px;
@@ -1329,6 +1423,17 @@ select:disabled {
   .page-tabs button.active {
     background: var(--accent);
     color: #fff;
+  }
+
+  .user-menu {
+    flex: 0 1 auto;
+    gap: 6px;
+  }
+
+  .auth-badge {
+    max-width: 92px;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }
 
@@ -1377,9 +1482,21 @@ select:disabled {
   .mood-group,
   .text-mode-group,
   .btn-group,
-  .auth-actions,
   .shares {
     flex-direction: column;
+  }
+
+  .auth-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .auth-provider-button {
+    padding: 10px 8px;
+  }
+
+  .auth-provider-button span {
+    display: none;
   }
 
   .book-inline-form {
@@ -1397,6 +1514,10 @@ select:disabled {
   .shared-book-card__summary-actions {
     display: flex;
     flex-wrap: wrap;
+  }
+
+  .shared-book-card__expanded {
+    align-items: flex-start;
   }
 
   .optional-diary-fields__grid {
