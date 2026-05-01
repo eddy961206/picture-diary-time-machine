@@ -785,12 +785,25 @@ select:disabled {
 
 .share-step-card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   padding: 14px;
   border: 1px solid rgba(79, 53, 37, 0.1);
   border-radius: var(--radius-sm);
   background: #fff;
+}
+
+.share-step-card summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.share-step-card summary::-webkit-details-marker,
+.shared-book-card summary::-webkit-details-marker {
+  display: none;
 }
 
 .share-step-card__badge {
@@ -805,17 +818,22 @@ select:disabled {
   font-weight: 900;
 }
 
-.share-step-card h3 {
-  margin: 1px 0 4px;
+.share-step-card strong {
+  display: block;
   font-size: 15px;
   font-weight: 900;
 }
 
-.share-step-card p {
-  margin: 0 0 10px;
+.share-step-card small {
+  display: block;
+  margin-top: 2px;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.share-step-card__body {
+  padding-left: 40px;
 }
 
 .invite-card {
@@ -853,6 +871,12 @@ select:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.invite-actions--inline {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(79, 53, 37, 0.08);
 }
 
 .icon-share-button {
@@ -923,14 +947,19 @@ select:disabled {
 }
 
 .shared-book-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
   padding: 12px;
   border: 1px solid rgba(79, 53, 37, 0.12);
   border-radius: var(--radius-sm);
   background: #fff;
+}
+
+.shared-book-card summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  list-style: none;
 }
 
 .shared-book-card.selected {
@@ -947,13 +976,14 @@ select:disabled {
   text-overflow: ellipsis;
 }
 
-.shared-book-card p {
-  margin: 4px 0 0;
+.shared-book-card small {
+  display: block;
+  margin-top: 4px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.shared-book-card__actions {
+.shared-book-card__summary-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1355,12 +1385,13 @@ select:disabled {
     gap: 10px;
   }
 
-  .shared-book-card {
+  .shared-book-card summary {
     grid-template-columns: 1fr;
   }
 
-  .shared-book-card__actions {
+  .shared-book-card__summary-actions {
     display: flex;
+    flex-wrap: wrap;
   }
 
   .optional-diary-fields__grid {

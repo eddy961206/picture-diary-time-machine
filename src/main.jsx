@@ -1233,8 +1233,6 @@ function SharePage({
   onOpenBook,
   onShareInvite,
 }) {
-  const inviteBook = currentBook || books[0] || null;
-
   return (
     <section className="page-stack">
       <div className="card classroom">
@@ -1255,63 +1253,67 @@ function SharePage({
           </div>
         ) : (
           <div className="share-layout">
-            <div className="share-forms">
-              <div className="share-step-card">
-                <span className="share-step-card__badge">1</span>
-                <div>
-                  <h3>새 초대 코드 만들기</h3>
-                  <p>일기장 이름을 적으면 바로 보낼 수 있는 초대 코드가 생겨요.</p>
-                  <form className="book-inline-form" onSubmit={onCreateBook}>
-                    <input type="text" value={bookName} maxLength="30" placeholder="예: 우리 가족 그림일기" onChange={(event) => setBookName(event.target.value)} />
-                    <button type="submit" className="share-btn">초대 코드 만들기</button>
-                  </form>
-                </div>
-              </div>
-              <div className="share-step-card">
-                <span className="share-step-card__badge">2</span>
-                <div>
-                  <h3>받은 초대 코드로 들어가기</h3>
-                  <p>링크로 받은 코드는 자동으로 채워지고, 직접 받은 코드는 여기에 적어요.</p>
-                  <form className="book-inline-form" onSubmit={onJoinBook}>
-                    <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
-                    <button type="submit" className="share-btn">들어가기</button>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <div className="invite-card">
-              <div>
-                <span className="invite-card__label">초대 링크 보내기</span>
-                <strong className="invite-card__code">{inviteBook ? inviteBook.invite_code : "아직 없음"}</strong>
-                <p>{inviteBook ? `"${inviteBook.name}" 일기장 초대예요. 아이콘을 누르면 앱부터 열어요.` : "먼저 1번에서 초대 코드를 만들어요."}</p>
-              </div>
-              <div className="invite-actions" aria-label="초대 공유">
-                <IconShareButton target="kakao" label="카카오톡으로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "kakao")} />
-                <IconShareButton target="x" label="X로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "x")} />
-                <IconShareButton target="instagram" label="Instagram으로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "instagram")} />
-                <IconShareButton target="copy" label="초대 링크 복사" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "copy")} />
-              </div>
-            </div>
-
             {books.length ? (
               <div className="shared-book-list">
                 {books.map((book) => (
-                  <article className={`shared-book-card ${currentBook?.id === book.id ? "selected" : ""}`} key={book.id}>
-                    <div>
-                      <strong>{book.name}</strong>
-                      <p>초대 코드 {book.invite_code}</p>
-                    </div>
-                    <div className="shared-book-card__actions">
-                      <button type="button" className="btn--ghost mini" onClick={() => onOpenBook(book.id)}>일기 보기</button>
+                  <details className={`shared-book-card ${currentBook?.id === book.id ? "selected" : ""}`} key={book.id}>
+                    <summary>
+                      <span>
+                        <strong>{book.name}</strong>
+                        <small>{currentBook?.id === book.id ? "보고 있는 일기장" : "공유 일기장"}</small>
+                      </span>
+                      <span className="shared-book-card__summary-actions">
+                        <button type="button" className="btn--ghost mini" onClick={(event) => {
+                          event.preventDefault();
+                          onOpenBook(book.id);
+                        }}>일기 보기</button>
+                        <span className="share-btn mini">초대하기</span>
+                      </span>
+                    </summary>
+                    <div className="invite-actions invite-actions--inline" aria-label={`${book.name} 초대 공유`}>
                       <IconShareButton target="kakao" label={`${book.name} 카카오톡 초대`} onClick={() => onShareInvite(book, "kakao")} />
+                      <IconShareButton target="x" label={`${book.name} X 초대`} onClick={() => onShareInvite(book, "x")} />
+                      <IconShareButton target="instagram" label={`${book.name} Instagram 초대`} onClick={() => onShareInvite(book, "instagram")} />
+                      <IconShareButton target="copy" label={`${book.name} 초대 링크 복사`} onClick={() => onShareInvite(book, "copy")} />
                     </div>
-                  </article>
+                  </details>
                 ))}
               </div>
             ) : (
               <div className="empty-state">공유 일기장을 만들거나 받은 초대 코드로 들어가면 여기에 모여요.</div>
             )}
+
+            <details className="share-step-card">
+              <summary>
+                <span className="share-step-card__badge">+</span>
+                <span>
+                  <strong>새 공유 일기장 만들기</strong>
+                  <small>필요할 때만 새로 만들어요.</small>
+                </span>
+              </summary>
+              <div className="share-step-card__body">
+                  <form className="book-inline-form" onSubmit={onCreateBook}>
+                    <input type="text" value={bookName} maxLength="30" placeholder="예: 우리 가족 그림일기" onChange={(event) => setBookName(event.target.value)} />
+                    <button type="submit" className="share-btn">초대 코드 만들기</button>
+                  </form>
+              </div>
+            </details>
+
+            <details className="share-step-card" open={Boolean(inviteCode)}>
+              <summary>
+                <span className="share-step-card__badge">↗</span>
+                <span>
+                  <strong>초대 코드로 들어가기</strong>
+                  <small>링크로 받은 코드는 자동으로 채워져요.</small>
+                </span>
+              </summary>
+              <div className="share-step-card__body">
+                  <form className="book-inline-form" onSubmit={onJoinBook}>
+                    <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
+                    <button type="submit" className="share-btn">들어가기</button>
+                  </form>
+              </div>
+            </details>
           </div>
         )}
       </div>
