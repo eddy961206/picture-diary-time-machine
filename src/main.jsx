@@ -232,6 +232,7 @@ function App() {
   const [bookName, setBookName] = useState("");
   const [inviteCode, setInviteCode] = useState(initialInviteCodeRef.current);
   const restoringPendingSave = useRef(false);
+  const generationInFlight = useRef(false);
 
   const currentBook = useMemo(
     () => diaryBooks.find((book) => book.id === currentBookId) || null,
@@ -469,6 +470,7 @@ function App() {
 
   async function handleGenerate(event) {
     event.preventDefault();
+    if (generationInFlight.current) return;
     const state = syncRitualState();
     if (Math.max(0, maxGenerations - state.generations) <= 0) {
       pushLog(currentUser ? "오늘은 여기까지예요." : "체험은 한 번만 가능해요.");
@@ -479,6 +481,7 @@ function App() {
       return;
     }
 
+    generationInFlight.current = true;
     setIsGenerating(true);
     setLoadingIndex(0);
     setStep("generate");
@@ -515,6 +518,7 @@ function App() {
         message: userFacingGenerateError(error),
       });
     } finally {
+      generationInFlight.current = false;
       setIsGenerating(false);
     }
   }
@@ -981,6 +985,7 @@ function MakePage({
   onShare,
 }) {
   const hasUsedFirst = ritualState.generations > 0;
+  const formDisabled = isLocked || isGenerating;
   const quota = !currentUser
     ? {
         title: remaining > 0 ? "체험으로 한 장 만들기" : "체험 완료",
@@ -1026,15 +1031,15 @@ function MakePage({
             <div className="field">
               <label className="field__label">오늘 있었던 일</label>
               <div className="text-mode-group" aria-label="일기 문구 방식">
-                <RadioPill name="textMode" value="expand" checked={form.textMode === "expand"} disabled={isLocked} onChange={updateForm}>일기 쓰기 귀찮은데...</RadioPill>
-                <RadioPill name="textMode" value="exact" checked={form.textMode === "exact"} disabled={isLocked} onChange={updateForm}>내 문구 그대로</RadioPill>
+                <RadioPill name="textMode" value="expand" checked={form.textMode === "expand"} disabled={formDisabled} onChange={updateForm}>일기 쓰기 귀찮은데...</RadioPill>
+                <RadioPill name="textMode" value="exact" checked={form.textMode === "exact"} disabled={formDisabled} onChange={updateForm}>내 문구 그대로</RadioPill>
               </div>
               <textarea
                 name="diary"
                 rows="5"
                 placeholder={placeholder}
                 value={form.diary}
-                disabled={isLocked}
+                disabled={formDisabled}
                 onChange={(event) => updateForm("diary", event.target.value)}
                 required
               />
@@ -1045,18 +1050,18 @@ function MakePage({
               <div className="optional-diary-fields__grid">
                 <label className="field compact-field">
                   <span className="field__label">제목 <em>선택</em></span>
-                  <input type="text" value={form.title} disabled={isLocked} maxLength="40" placeholder="비워두면 어울리게 적어줘요." onChange={(event) => updateForm("title", event.target.value)} />
+                  <input type="text" value={form.title} disabled={formDisabled} maxLength="40" placeholder="비워두면 어울리게 적어줘요." onChange={(event) => updateForm("title", event.target.value)} />
                 </label>
                 <label className="field compact-field">
                   <span className="field__label">날씨 <em>선택</em></span>
-                  <input type="text" value={form.weather} disabled={isLocked} maxLength="20" placeholder="예: 맑음, 흐림, 비" onChange={(event) => updateForm("weather", event.target.value)} />
+                  <input type="text" value={form.weather} disabled={formDisabled} maxLength="20" placeholder="예: 맑음, 흐림, 비" onChange={(event) => updateForm("weather", event.target.value)} />
                 </label>
               </div>
             </details>
 
             <div className="field">
               <label className="field__label">그날의 사진 <em>없어도 돼요</em></label>
-              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={isLocked} onChange={onPhotoChange} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" disabled={formDisabled} onChange={onPhotoChange} />
             </div>
 
             {referenceImageDataUrl ? (
@@ -1073,18 +1078,18 @@ function MakePage({
             <div className="field">
               <label className="field__label">오늘의 분위기</label>
               <div className="mood-group">
-                <RadioPill name="moodType" value="funny" checked={form.moodType === "funny"} disabled={isLocked} onChange={updateForm}>웃긴 일기</RadioPill>
-                <RadioPill name="moodType" value="soft" checked={form.moodType === "soft"} disabled={isLocked} onChange={updateForm}>찡한 일기</RadioPill>
-                <RadioPill name="moodType" value="kid" checked={form.moodType === "kid"} disabled={isLocked} onChange={updateForm}>진짜 초딩 일기</RadioPill>
+                <RadioPill name="moodType" value="funny" checked={form.moodType === "funny"} disabled={formDisabled} onChange={updateForm}>웃긴 일기</RadioPill>
+                <RadioPill name="moodType" value="soft" checked={form.moodType === "soft"} disabled={formDisabled} onChange={updateForm}>찡한 일기</RadioPill>
+                <RadioPill name="moodType" value="kid" checked={form.moodType === "kid"} disabled={formDisabled} onChange={updateForm}>진짜 초딩 일기</RadioPill>
               </div>
             </div>
 
             <div className="actions">
-              <button type="submit" className="btn btn--primary" disabled={isLocked || isGenerating}>
-                {hasUsedFirst ? "다시 만들기" : "그림일기 만들기"}
+              <button type="submit" className="btn btn--primary" disabled={formDisabled}>
+                {isGenerating ? "그리는 중..." : hasUsedFirst ? "다시 만들기" : "그림일기 만들기"}
               </button>
               {hasUsedFirst && !isLocked ? (
-                <button type="submit" className="btn btn--ghost">마음에 안 들어! 다시 쓸래</button>
+                <button type="submit" className="btn btn--ghost" disabled={isGenerating}>마음에 안 들어! 다시 쓸래</button>
               ) : null}
             </div>
           </form>
