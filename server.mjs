@@ -285,11 +285,10 @@ async function handleGenerate(req, res) {
       return;
     }
 
-    if (!ALLOW_UNAUTHENTICATED_GENERATE) {
-      await requireSupabaseUser(req);
-    }
-
     const input = await readJson(req);
+    if (!ALLOW_UNAUTHENTICATED_GENERATE) {
+      await requireSupabaseUser(req, { allowTrial: input.trialGeneration === true });
+    }
     validateRequiredInput(input);
     const size = normalizeSize(input.size);
     const quality = normalizeQuality(input.quality);
@@ -313,17 +312,19 @@ async function handleGenerate(req, res) {
   }
 }
 
-async function requireSupabaseUser(req) {
+async function requireSupabaseUser(req, { allowTrial = false } = {}) {
+  const authorization = String(req.headers.authorization || "");
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match && allowTrial) return null;
+
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     const error = new Error("그림일기 생성에는 Supabase 로그인 설정이 필요해.");
     error.statusCode = 503;
     throw error;
   }
 
-  const authorization = String(req.headers.authorization || "");
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
   if (!match) {
-    const error = new Error("로그인해야 그림일기를 만들 수 있어.");
+    const error = new Error("로그인이 필요해요.");
     error.statusCode = 401;
     throw error;
   }

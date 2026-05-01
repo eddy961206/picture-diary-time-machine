@@ -824,6 +824,52 @@ select:disabled {
   font-weight: 900;
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(45, 42, 36, 0.38);
+}
+
+.modal__panel {
+  position: relative;
+  width: min(420px, 100%);
+  padding: 28px;
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+
+.modal__panel h2 {
+  margin-bottom: 10px;
+  font-size: 26px;
+}
+
+.modal__panel p {
+  margin: 0 0 18px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: #f3f1ed;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* Auth & Status */
 .top-bar {
   display: flex;
