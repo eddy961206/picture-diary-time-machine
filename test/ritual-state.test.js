@@ -36,10 +36,10 @@ test("daily generation limit counts successful generations only when recorded", 
   assert.equal(remainingGenerations(getTodayRitualState({ now, storage })), 0);
 });
 
-test("streak rewards follow homework notebook milestones", () => {
-  assert.equal(getStreakReward(0), "방학숙제장 시작 전");
+test("streak rewards follow diary notebook milestones", () => {
+  assert.equal(getStreakReward(0), "그림일기장 시작 전");
   assert.equal(getStreakReward(3), "작심삼일 성공");
-  assert.equal(getStreakReward(7), "방학숙제 1주차 완성");
+  assert.equal(getStreakReward(7), "그림일기 1주차 완성");
   assert.equal(getStreakReward(14), "일기장 절반 채움");
   assert.equal(getStreakReward(30), "여름방학 그림일기장 완성");
 });

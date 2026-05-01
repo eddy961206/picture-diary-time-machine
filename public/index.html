@@ -46,7 +46,7 @@
             <div class="quota-card" id="quotaCard">
               <div>
                 <strong id="quotaTitle">오늘의 일기장</strong>
-                <p id="quotaText">오늘의 숙제 1번 남음</p>
+                <p id="quotaText">오늘의 일기 1번 남음</p>
               </div>
               <span class="quota-card__status" id="quotaStatus">1번 남음</span>
             </div>
@@ -130,7 +130,7 @@
 
         <section class="result">
           <div class="card">
-            <h2>오늘의 숙제</h2>
+            <h2>오늘의 일기</h2>
             <div class="result-display" id="resultStage">
               <img id="resultImage" src="/sample-output.png" alt="생성 결과" />
               <div class="loading-overlay hidden" id="loading">
@@ -148,7 +148,7 @@
             <div class="stamps">
               <button type="button" class="stamp" data-stamp="참 잘했어요">참 잘했어요</button>
               <button type="button" class="stamp" data-stamp="재밌었음">재밌었음</button>
-              <button type="button" class="stamp" data-stamp="숙제 완료">숙제 완료</button>
+              <button type="button" class="stamp" data-stamp="일기 완료">일기 완료</button>
             </div>
 
             <div class="shares">
@@ -158,7 +158,7 @@
             </div>
 
             <div class="streak-card" id="streakCard" style="margin-top: 24px; padding: 16px; background: #fff9ed; border-radius: 16px; border: 1px solid #ffe8cc;">
-              <strong id="streakTitle">방학숙제장 시작!</strong>
+              <strong id="streakTitle">그림일기장 시작!</strong>
               <p id="streakText" style="margin: 0; font-size: 13px; color: #8e8476;">오늘 한 장을 내면 기록이 시작돼요.</p>
             </div>
             <div id="log" style="margin-top: 12px; font-size: 13px; color: var(--muted); text-align: center;"></div>
@@ -168,7 +168,7 @@
 
       <section class="diary-book card" id="diaryBook" style="margin-top: 40px;">
         <div class="section-heading">
-          <h2>내 방학숙제장</h2>
+          <h2>내 그림일기장</h2>
           <span id="currentBookLabel">나만 보기</span>
         </div>
         <div class="diary-list" id="diaryList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
@@ -197,6 +197,28 @@
     </div>
   </div>
 
-  <script type="module" src="/app.js?v=20260501-trial-save"></script>
+  <div class="modal generation-modal hidden" id="generationModal" role="dialog" aria-modal="true" aria-labelledby="generationModalTitle">
+    <div class="modal__panel generation-modal__panel">
+      <div class="spinner"></div>
+      <h2 id="generationModalTitle">그림일기를 만들고 있어요</h2>
+      <p id="generationModalText">일기장 종이를 펴는 중이에요.</p>
+      <div class="generation-steps" id="generationSteps" aria-label="진행 상태">
+        <span class="active">문장 고르기</span>
+        <span>그림 그리기</span>
+        <span>종이에 붙이기</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="statusModal" role="dialog" aria-modal="true" aria-labelledby="statusModalTitle">
+    <div class="modal__panel">
+      <button type="button" class="modal__close" id="closeStatusModal" aria-label="닫기">×</button>
+      <h2 id="statusModalTitle">다시 해볼까요?</h2>
+      <p id="statusModalText">그림일기를 만들지 못했어요.</p>
+      <button type="button" class="btn btn--primary" id="statusModalAction">확인</button>
+    </div>
+  </div>
+
+  <script type="module" src="/app.js?v=20260501-wait-modal"></script>
 </body>
 </html>

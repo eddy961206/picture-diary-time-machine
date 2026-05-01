@@ -60,6 +60,14 @@ const currentBookLabel = document.querySelector("#currentBookLabel");
 const saveHint = document.querySelector("#saveHint");
 const saveLoginModal = document.querySelector("#saveLoginModal");
 const closeSaveLoginModal = document.querySelector("#closeSaveLoginModal");
+const generationModal = document.querySelector("#generationModal");
+const generationModalText = document.querySelector("#generationModalText");
+const generationStepItems = document.querySelectorAll("#generationSteps span");
+const statusModal = document.querySelector("#statusModal");
+const statusModalTitle = document.querySelector("#statusModalTitle");
+const statusModalText = document.querySelector("#statusModalText");
+const closeStatusModal = document.querySelector("#closeStatusModal");
+const statusModalAction = document.querySelector("#statusModalAction");
 
 const PENDING_SAVE_DB = "pictureDiaryPendingSave:v1";
 const PENDING_SAVE_STORE = "pending";
@@ -76,6 +84,7 @@ let diaryBooks = [];
 let currentBookId = "";
 let lastGeneratedInput = null;
 let currentStamp = "";
+let generationLineTimer = 0;
 
 
 function formData() {
@@ -109,6 +118,52 @@ function setLog(message, tone = "normal") {
   if (!log) return;
   log.textContent = message || "";
   log.dataset.tone = tone;
+}
+
+function setGenerationProgress(index) {
+  const message = LOADING_LINES[index % LOADING_LINES.length];
+  if (loadingText) loadingText.textContent = message;
+  if (generationModalText) generationModalText.textContent = message;
+  generationStepItems.forEach((item, itemIndex) => {
+    item.classList.toggle("active", itemIndex <= index % generationStepItems.length);
+  });
+}
+
+function openGenerationModal() {
+  if (!generationModal) return;
+  let index = getTodayRitualState().generations % LOADING_LINES.length;
+  setGenerationProgress(index);
+  generationModal.classList.remove("hidden");
+  window.clearInterval(generationLineTimer);
+  generationLineTimer = window.setInterval(() => {
+    index += 1;
+    setGenerationProgress(index);
+  }, 2200);
+}
+
+function closeGenerationModal() {
+  window.clearInterval(generationLineTimer);
+  generationLineTimer = 0;
+  generationModal?.classList.add("hidden");
+}
+
+function openStatusModal({ title, message }) {
+  if (!statusModal) return;
+  if (statusModalTitle) statusModalTitle.textContent = title;
+  if (statusModalText) statusModalText.textContent = message;
+  statusModal.classList.remove("hidden");
+}
+
+function closeStatusModalView() {
+  statusModal?.classList.add("hidden");
+}
+
+function userFacingGenerateError(error) {
+  const message = String(error?.message || "").trim();
+  if (/로그인|세션|만료/.test(message)) return message;
+  if (/OPENAI_API_KEY|API key/i.test(message)) return "그림 생성 설정을 확인해야 해요. 잠시 뒤 다시 시도해주세요.";
+  if (/fetch|network|Failed to fetch/i.test(message)) return "네트워크가 잠깐 끊긴 것 같아요. 연결을 확인하고 다시 시도해주세요.";
+  return message || "그림일기를 만들지 못했어요. 잠시 뒤 다시 시도해주세요.";
 }
 
 function maxGenerationsForCurrentUser() {
@@ -605,6 +660,12 @@ function closeSaveLoginModalView() {
   saveLoginModal.classList.add("hidden");
 }
 
+closeStatusModal?.addEventListener("click", closeStatusModalView);
+statusModalAction?.addEventListener("click", closeStatusModalView);
+statusModal?.addEventListener("click", (event) => {
+  if (event.target === statusModal) closeStatusModalView();
+});
+
 async function startAuth(provider, { saveAfterLogin = false } = {}) {
   if (!supabase) {
     setLog("로그인 설정을 불러오지 못했어요.", "error");
@@ -933,7 +994,8 @@ form.addEventListener("submit", async (event) => {
   setStep("generate");
   generateBtn.disabled = true;
   eraserChance.disabled = true;
-  loadingText.textContent = LOADING_LINES[getTodayRitualState().generations % LOADING_LINES.length];
+  setGenerationProgress(getTodayRitualState().generations);
+  openGenerationModal();
 
   try {
     const accessToken = await getAccessToken();
@@ -949,18 +1011,29 @@ form.addEventListener("submit", async (event) => {
         trialGeneration: !accessToken,
       }),
     });
-    const json = await res.json();
+    const json = await res.json().catch(() => ({
+      ok: false,
+      error: "응답을 읽지 못했어요. 잠시 뒤 다시 시도해주세요.",
+    }));
     if (!json.ok) throw new Error(json.error || "생성 실패");
 
     setCurrentImage(json.image, requestData.outputFormat || "png");
     lastGeneratedInput = requestData;
     recordSuccessfulGeneration();
     updateRitualUi();
+    document.querySelector(".result")?.scrollIntoView({ behavior: "smooth", block: "start" });
     setLog("그림일기를 만들었어요.");
   } catch (error) {
+    console.error(error);
     setStep("write");
-    setLog("일기가 번졌나 봐요. 다시 한 번 써볼까요?", "error");
+    const message = userFacingGenerateError(error);
+    setLog("그림일기를 만들지 못했어요. 안내를 확인해주세요.", "error");
+    openStatusModal({
+      title: "그림일기를 만들지 못했어요",
+      message,
+    });
   } finally {
+    closeGenerationModal();
     loading.classList.add("hidden");
     updateRitualUi();
   }

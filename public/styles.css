@@ -157,6 +157,12 @@ body {
   align-items: start;
 }
 
+.result {
+  order: -1;
+  position: sticky;
+  top: 24px;
+}
+
 .card {
   background: var(--paper);
   border-radius: var(--radius-md);
@@ -870,6 +876,57 @@ select:disabled {
   cursor: pointer;
 }
 
+.generation-modal {
+  background: rgba(45, 42, 36, 0.52);
+  backdrop-filter: blur(4px);
+}
+
+.generation-modal__panel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.generation-modal__panel .spinner {
+  width: 52px;
+  height: 52px;
+}
+
+.generation-modal__panel h2 {
+  margin-bottom: 0;
+}
+
+.generation-modal__panel p {
+  min-height: 48px;
+  margin-bottom: 0;
+}
+
+.generation-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.generation-steps span {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 999px;
+  background: #f3f1ed;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.generation-steps span.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 /* Auth & Status */
 .top-bar {
   display: flex;
@@ -895,6 +952,9 @@ select:disabled {
 @media (max-width: 1000px) {
   .sidebar { display: none; }
   .grid { grid-template-columns: 1fr; }
+  .result {
+    position: static;
+  }
   .main { padding: 16px; }
   .brand-name { font-size: 48px; }
   .page-header { height: 240px; }

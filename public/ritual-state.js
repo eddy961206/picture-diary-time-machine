@@ -3,14 +3,17 @@ export const RITUAL_STORAGE_KEY = "pictureDiaryRitual:v1";
 
 export const SHARE_LINES = [
   "오늘 내 하루가 초딩 그림일기가 됨",
-  "오늘의 방학숙제 제출함",
+  "오늘의 그림일기 제출함",
   "선생님 저 오늘도 살았어요",
 ];
 
 export const LOADING_LINES = [
-  "일기장에 색칠하는 중...",
-  "삐뚤빼뚤 글씨 쓰는 중...",
-  "선생님 몰래 다시 그리는 중...",
+  "일기장 종이를 펴는 중이에요.",
+  "오늘 있었던 일을 한 줄씩 고르는 중이에요.",
+  "색연필이 삐뚤빼뚤 움직이는 중이에요.",
+  "빈칸에 제목을 적어보는 중이에요.",
+  "종이가 조금 구겨져도 괜찮게 다듬는 중이에요.",
+  "마지막 줄을 또박또박 쓰는 중이에요.",
 ];
 
 export function getSeoulDateKey(date = new Date()) {
@@ -73,10 +76,10 @@ export function saveSuccessfulGeneration({
 export function getStreakReward(streak) {
   if (streak >= 30) return "여름방학 그림일기장 완성";
   if (streak >= 14) return "일기장 절반 채움";
-  if (streak >= 7) return "방학숙제 1주차 완성";
+  if (streak >= 7) return "그림일기 1주차 완성";
   if (streak >= 3) return "작심삼일 성공";
-  if (streak >= 1) return "오늘의 숙제 완료";
-  return "방학숙제장 시작 전";
+  if (streak >= 1) return "오늘의 일기 완료";
+  return "그림일기장 시작 전";
 }
 
 function daysBetween(dateKeyA, dateKeyB) {
