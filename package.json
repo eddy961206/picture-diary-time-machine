@@ -4,14 +4,22 @@
   "description": "사진이나 짧은 일기를 2010년대 초딩 그림일기 감성 이미지로 만들어주는 작은 웹앱",
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "start": "node server.mjs",
-    "dev": "node server.mjs",
+    "dev": "npm run build && node server.mjs",
+    "dev:client": "vite --host 127.0.0.1",
     "test": "node --test"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.105.1"
+    "@supabase/supabase-js": "^2.105.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.10"
   }
 }

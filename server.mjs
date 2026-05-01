@@ -6,7 +6,8 @@ import { handleKakaoCallback, handleKakaoLogin, sendKakaoSession } from "./api/k
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const publicDir = path.join(__dirname, "public");
+const distDir = path.join(__dirname, "dist");
+const publicDir = fs.existsSync(path.join(distDir, "index.html")) ? distDir : path.join(__dirname, "public");
 
 function loadDotEnv() {
   const envPath = path.join(__dirname, ".env");
