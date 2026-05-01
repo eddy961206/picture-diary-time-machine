@@ -5,6 +5,15 @@ const shareTargets = {
     `https://www.threads.net/intent/post?text=${encodeURIComponent(`${text} ${url}`)}`,
 };
 
+const appShareTargets = {
+  kakao: ({ text, url }) =>
+    `kakaotalk://sendurl?msg=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+  x: ({ text, url }) =>
+    `twitter://post?message=${encodeURIComponent(`${text} ${url}`)}`,
+  instagram: ({ text, url }) =>
+    `instagram://sharesheet?text=${encodeURIComponent(`${text} ${url}`)}`,
+};
+
 export function createImageFilename(format = "png", now = Date.now()) {
   const extension = String(format || "png").replace(/^\./, "");
   return `picture-diary-${now}.${extension}`;
@@ -39,6 +48,12 @@ export function buildInviteUrl(inviteCode, location = globalThis.location) {
 export function buildSocialShareUrl(target, { text, url }) {
   const builder = shareTargets[target];
   if (!builder) throw new Error("지원하지 않는 공유 대상입니다.");
+  return builder({ text, url });
+}
+
+export function buildAppShareUrl(target, { text, url }) {
+  const builder = appShareTargets[target];
+  if (!builder) throw new Error("지원하지 않는 앱 공유 대상입니다.");
   return builder({ text, url });
 }
 

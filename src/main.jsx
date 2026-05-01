@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  buildAppShareUrl,
   buildInviteUrl,
   buildSocialShareUrl,
   createImageFileFromDataUrl,
@@ -68,6 +69,31 @@ function removeInviteQueryFromUrl() {
   url.searchParams.delete("code");
   const nextUrl = `${url.pathname}${url.search}${url.hash}`;
   window.history.replaceState({}, document.title, nextUrl);
+}
+
+function isMobileBrowser() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function openAppUrlWithFallback(appUrl, fallback) {
+  if (!isMobileBrowser()) {
+    fallback();
+    return;
+  }
+
+  let didLeave = false;
+  const markLeave = () => {
+    didLeave = true;
+  };
+  window.addEventListener("pagehide", markLeave, { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) markLeave();
+  }, { once: true });
+  window.location.href = appUrl;
+  window.setTimeout(() => {
+    if (!didLeave) fallback();
+  }, 900);
 }
 
 function formatKoreanDiaryDate(date = new Date()) {
@@ -625,8 +651,15 @@ function App() {
         pushLog("이미지를 저장한 뒤 앱에서 공유해주세요.", "error");
         return;
       }
-      const url = buildSocialShareUrl(target, { text: shareText, url: getSharePageUrl() });
-      window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+      if (target === "x") {
+        openAppUrlWithFallback(
+          buildAppShareUrl("x", { text: shareText, url: getSharePageUrl() }),
+          () => {
+            const url = buildSocialShareUrl(target, { text: shareText, url: getSharePageUrl() });
+            window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+          },
+        );
+      }
     } catch {
       pushLog("공유를 시작하지 못했어요.", "error");
     }
@@ -635,39 +668,39 @@ function App() {
   async function shareInvite(book, target) {
     if (!book) return;
     const inviteUrl = buildInviteUrl(book.invite_code);
+    const shortText = `"${book.name}" 그림일기장 같이 볼래? 초대 코드: ${book.invite_code}`;
     const text = [
       `"${book.name}" 그림일기장 같이 볼래?`,
       `초대 코드: ${book.invite_code}`,
       inviteUrl,
     ].join("\n");
 
+    const copyInvite = async () => {
+      await navigator.clipboard.writeText(text);
+      pushLog("초대 문구를 복사했어요.");
+    };
+
     try {
       if (target === "copy") {
-        await navigator.clipboard.writeText(text);
-        pushLog("초대 문구를 복사했어요.");
+        await copyInvite();
         return;
       }
 
       if (target === "x") {
-        const url = buildSocialShareUrl("x", {
-          text: `"${book.name}" 그림일기장 같이 볼래? 초대 코드: ${book.invite_code}`,
-          url: inviteUrl,
-        });
-        window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+        openAppUrlWithFallback(
+          buildAppShareUrl("x", { text: shortText, url: inviteUrl }),
+          () => {
+            const url = buildSocialShareUrl("x", { text: shortText, url: inviteUrl });
+            window.open(url, "_blank", "noopener,noreferrer,width=720,height=640");
+          },
+        );
         return;
       }
 
-      if (navigator.share) {
-        await navigator.share({
-          title: `${book.name} 그림일기장`,
-          text,
-          url: inviteUrl,
-        });
-        return;
-      }
-
-      await navigator.clipboard.writeText(text);
-      pushLog("초대 문구를 복사했어요.");
+      openAppUrlWithFallback(
+        buildAppShareUrl(target, { text: shortText, url: inviteUrl }),
+        copyInvite,
+      );
     } catch {
       await navigator.clipboard.writeText(text).catch(() => {});
       pushLog("초대 문구를 복사했어요.");
@@ -1028,6 +1061,46 @@ function RadioPill({ name, value, checked, disabled, onChange, children }) {
   );
 }
 
+function ShareTargetIcon({ target }) {
+  if (target === "kakao") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4C6.9 4 3 7.1 3 11c0 2.5 1.6 4.7 4 5.9l-.7 2.8 3.3-1.9c.8.1 1.6.2 2.4.2 5.1 0 9-3.1 9-7s-3.9-7-9-7Z" />
+      </svg>
+    );
+  }
+  if (target === "x") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14.3 10.5 21.8 2h-1.9l-6.5 7.4L8.2 2H2.2l7.9 11.2L2.2 22h1.9l6.8-7.7 5.5 7.7h5.9l-8-11.5Zm-2.4 2.7-.8-1.1L4.7 3.4h2.6l5.1 7.1.8 1.1 6.7 9.1h-2.6l-5.4-7.5Z" />
+      </svg>
+    );
+  }
+  if (target === "instagram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="5" />
+        <circle cx="12" cy="12" r="3.5" />
+        <circle cx="17" cy="7" r="1.1" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="8" y="8" width="11" height="11" rx="2" />
+      <path d="M5 15V7a2 2 0 0 1 2-2h8" />
+    </svg>
+  );
+}
+
+function IconShareButton({ target, label, disabled = false, onClick }) {
+  return (
+    <button type="button" className={`icon-share-button icon-share-button--${target}`} disabled={disabled} onClick={onClick} aria-label={label} title={label}>
+      <ShareTargetIcon target={target} />
+    </button>
+  );
+}
+
 function ResultPanel({
   currentImageUrl,
   currentImageFilename,
@@ -1068,9 +1141,9 @@ function ResultPanel({
           ))}
         </div>
         <div className="shares">
-          <button type="button" className="share-btn" onClick={() => onShare("x")}>X</button>
-          <button type="button" className="share-btn" onClick={() => onShare("instagram")}>Insta</button>
-          <button type="button" className="share-btn" onClick={() => onShare("copy")}>링크 복사</button>
+          <IconShareButton target="x" label="X로 공유" onClick={() => onShare("x")} />
+          <IconShareButton target="instagram" label="Instagram으로 공유" onClick={() => onShare("instagram")} />
+          <IconShareButton target="copy" label="링크 복사" onClick={() => onShare("copy")} />
         </div>
         <div className="streak-card">
           <strong>{streakTitle}</strong>
@@ -1153,27 +1226,41 @@ function SharePage({
         ) : (
           <div className="share-layout">
             <div className="share-forms">
-              <form className="book-inline-form" onSubmit={onCreateBook}>
-                <input type="text" value={bookName} maxLength="30" placeholder="공유 일기장 이름" onChange={(event) => setBookName(event.target.value)} />
-                <button type="submit" className="share-btn">만들기</button>
-              </form>
-              <form className="book-inline-form" onSubmit={onJoinBook}>
-                <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
-                <button type="submit" className="share-btn">들어가기</button>
-              </form>
+              <div className="share-step-card">
+                <span className="share-step-card__badge">1</span>
+                <div>
+                  <h3>새 초대 코드 만들기</h3>
+                  <p>일기장 이름을 적으면 바로 보낼 수 있는 초대 코드가 생겨요.</p>
+                  <form className="book-inline-form" onSubmit={onCreateBook}>
+                    <input type="text" value={bookName} maxLength="30" placeholder="예: 우리 가족 그림일기" onChange={(event) => setBookName(event.target.value)} />
+                    <button type="submit" className="share-btn">초대 코드 만들기</button>
+                  </form>
+                </div>
+              </div>
+              <div className="share-step-card">
+                <span className="share-step-card__badge">2</span>
+                <div>
+                  <h3>받은 초대 코드로 들어가기</h3>
+                  <p>링크로 받은 코드는 자동으로 채워지고, 직접 받은 코드는 여기에 적어요.</p>
+                  <form className="book-inline-form" onSubmit={onJoinBook}>
+                    <input type="text" value={inviteCode} maxLength="12" placeholder="초대 코드" onChange={(event) => setInviteCode(normalizeInviteCode(event.target.value))} />
+                    <button type="submit" className="share-btn">들어가기</button>
+                  </form>
+                </div>
+              </div>
             </div>
 
             <div className="invite-card">
               <div>
-                <span className="invite-card__label">초대 코드</span>
+                <span className="invite-card__label">초대 링크 보내기</span>
                 <strong className="invite-card__code">{inviteBook ? inviteBook.invite_code : "아직 없음"}</strong>
-                <p>{inviteBook ? `"${inviteBook.name}" 일기장으로 초대해요.` : "공유 일기장을 만들면 초대 버튼이 바로 열려요."}</p>
+                <p>{inviteBook ? `"${inviteBook.name}" 일기장 초대예요. 아이콘을 누르면 앱부터 열어요.` : "먼저 1번에서 초대 코드를 만들어요."}</p>
               </div>
               <div className="invite-actions" aria-label="초대 공유">
-                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "kakao")}>카톡</button>
-                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "x")}>X</button>
-                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "instagram")}>Insta</button>
-                <button type="button" className="share-btn" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "copy")}>복사</button>
+                <IconShareButton target="kakao" label="카카오톡으로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "kakao")} />
+                <IconShareButton target="x" label="X로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "x")} />
+                <IconShareButton target="instagram" label="Instagram으로 초대 링크 보내기" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "instagram")} />
+                <IconShareButton target="copy" label="초대 링크 복사" disabled={!inviteBook} onClick={() => onShareInvite(inviteBook, "copy")} />
               </div>
             </div>
 
@@ -1187,7 +1274,7 @@ function SharePage({
                     </div>
                     <div className="shared-book-card__actions">
                       <button type="button" className="btn--ghost mini" onClick={() => onOpenBook(book.id)}>일기 보기</button>
-                      <button type="button" className="btn--ghost mini" onClick={() => onShareInvite(book, "kakao")}>초대</button>
+                      <IconShareButton target="kakao" label={`${book.name} 카카오톡 초대`} onClick={() => onShareInvite(book, "kakao")} />
                     </div>
                   </article>
                 ))}

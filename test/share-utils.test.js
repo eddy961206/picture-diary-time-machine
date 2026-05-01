@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildAppShareUrl,
   buildSocialShareUrl,
   buildInviteUrl,
   createImageFileFromDataUrl,
@@ -66,6 +67,24 @@ test("buildSocialShareUrl rejects removed SNS targets", () => {
   assert.throws(
     () => buildSocialShareUrl("facebook", { text: "text", url: "https://example.com" }),
     { message: "지원하지 않는 공유 대상입니다." },
+  );
+});
+
+test("buildAppShareUrl creates mobile app deep links", () => {
+  const text = "초대 코드 ABCD12";
+  const url = "https://example.com/diary?invite=ABCD12";
+
+  assert.equal(
+    buildAppShareUrl("kakao", { text, url }),
+    "kakaotalk://sendurl?msg=%EC%B4%88%EB%8C%80%20%EC%BD%94%EB%93%9C%20ABCD12&url=https%3A%2F%2Fexample.com%2Fdiary%3Finvite%3DABCD12",
+  );
+  assert.equal(
+    buildAppShareUrl("x", { text, url }),
+    "twitter://post?message=%EC%B4%88%EB%8C%80%20%EC%BD%94%EB%93%9C%20ABCD12%20https%3A%2F%2Fexample.com%2Fdiary%3Finvite%3DABCD12",
+  );
+  assert.equal(
+    buildAppShareUrl("instagram", { text, url }),
+    "instagram://sharesheet?text=%EC%B4%88%EB%8C%80%20%EC%BD%94%EB%93%9C%20ABCD12%20https%3A%2F%2Fexample.com%2Fdiary%3Finvite%3DABCD12",
   );
 });
 
