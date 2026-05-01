@@ -67,14 +67,14 @@
               <details class="book-more" id="bookMore">
                 <summary>공유 일기장 만들기/들어가기</summary>
                 <div class="book-actions">
-                <form class="book-inline-form" id="createBookForm">
+                <div class="book-inline-form" id="createBookForm">
                   <input type="text" name="bookName" maxlength="30" placeholder="공유 일기장 이름" />
-                  <button type="submit" class="share-btn">만들기</button>
-                </form>
-                <form class="book-inline-form" id="joinBookForm">
+                  <button type="button" class="share-btn" id="createBookButton">만들기</button>
+                </div>
+                <div class="book-inline-form" id="joinBookForm">
                   <input type="text" name="inviteCode" maxlength="12" placeholder="초대 코드" />
-                  <button type="submit" class="share-btn">들어가기</button>
-                </form>
+                  <button type="button" class="share-btn" id="joinBookButton">들어가기</button>
+                </div>
                 </div>
               </details>
             </div>
@@ -185,6 +185,6 @@
     </div>
   </main>
 
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="/app.js?v=20260501-oauth-fix"></script>
 </body>
 </html>

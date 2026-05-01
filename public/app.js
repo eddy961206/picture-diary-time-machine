@@ -4,7 +4,7 @@ import {
   createImageFilename,
   getSharePageUrl,
 } from "./share-utils.js";
-import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js";
+import { getSupabaseClient, getSupabaseConfig } from "./supabase-client.js?v=20260501-oauth-fix";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -54,6 +54,8 @@ const bookHint = document.querySelector("#bookHint");
 const copyInviteCode = document.querySelector("#copyInviteCode");
 const createBookForm = document.querySelector("#createBookForm");
 const joinBookForm = document.querySelector("#joinBookForm");
+const createBookButton = document.querySelector("#createBookButton");
+const joinBookButton = document.querySelector("#joinBookButton");
 const currentBookLabel = document.querySelector("#currentBookLabel");
 const saveHint = document.querySelector("#saveHint");
 
@@ -465,8 +467,10 @@ async function initAuth() {
 
   supabase = await getSupabaseClient();
   const completedKakaoLogin = await completeKakaoLoginFromHash();
-  const { data } = await supabase.auth.getUser();
+  setAuthUi();
+  const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
   currentUser = data.user || null;
+  setAuthUi();
   const params = new URLSearchParams(window.location.search);
   const authError = params.get("error_description") || params.get("error");
   if (!completedKakaoLogin && authError) {
@@ -669,16 +673,24 @@ copyInviteCode?.addEventListener("click", async () => {
   setLog("초대 코드를 복사했어. 같이 쓸 사람에게 보내면 돼.");
 });
 
-createBookForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
+createBookForm?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    createBookButton?.click();
+  }
+});
+
+createBookButton?.addEventListener("click", async () => {
   if (!supabase || !currentUser) {
     setLog("로그인하면 공유 일기장을 만들 수 있어.", "error");
     return;
   }
 
-  const name = String(new FormData(createBookForm).get("bookName") || "").trim();
+  const nameInput = createBookForm?.querySelector("input[name='bookName']");
+  const name = String(nameInput?.value || "").trim();
   if (!name) {
     setLog("공유 일기장 이름을 적어줘.", "error");
+    nameInput?.focus();
     return;
   }
 
@@ -712,7 +724,7 @@ createBookForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  createBookForm.reset();
+  if (nameInput) nameInput.value = "";
   setFormControlsDisabled(createBookForm, false);
   currentBookId = bookId;
   await loadDiaryBooks();
@@ -720,18 +732,26 @@ createBookForm?.addEventListener("submit", async (event) => {
   setLog("공유 일기장을 만들었어. 초대 코드로 사람을 부를 수 있어.");
 });
 
-joinBookForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
+joinBookForm?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    joinBookButton?.click();
+  }
+});
+
+joinBookButton?.addEventListener("click", async () => {
   if (!supabase || !currentUser) {
     setLog("로그인하면 공유 일기장에 들어갈 수 있어.", "error");
     return;
   }
 
-  const inviteCode = String(new FormData(joinBookForm).get("inviteCode") || "")
+  const inviteCodeInput = joinBookForm?.querySelector("input[name='inviteCode']");
+  const inviteCode = String(inviteCodeInput?.value || "")
     .trim()
     .toUpperCase();
   if (!inviteCode) {
     setLog("초대 코드를 입력해줘.", "error");
+    inviteCodeInput?.focus();
     return;
   }
 
@@ -747,7 +767,7 @@ joinBookForm?.addEventListener("submit", async (event) => {
     return;
   }
 
-  joinBookForm.reset();
+  if (inviteCodeInput) inviteCodeInput.value = "";
   setFormControlsDisabled(joinBookForm, false);
   currentBookId = data;
   await loadDiaryBooks();

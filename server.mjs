@@ -49,6 +49,7 @@ function sendJson(res, status, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": payload?.ok && ("supabaseUrl" in payload || "hasApiKey" in payload) ? "no-store" : "no-cache",
     "Content-Length": Buffer.byteLength(body),
   });
   res.end(body);

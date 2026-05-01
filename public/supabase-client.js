@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 let clientPromise;
 
 export async function getSupabaseConfig() {
-  const response = await fetch("/api/config");
+  const response = await fetch("/api/config", { cache: "no-store" });
   const config = await response.json().catch(() => ({}));
   return {
     configured: Boolean(config.supabaseUrl && config.supabaseAnonKey),
