@@ -12,6 +12,7 @@ export async function getSupabaseConfig() {
         configured: Boolean(config.supabaseUrl && config.supabaseAnonKey),
         supabaseUrl: config.supabaseUrl || "",
         supabaseAnonKey: config.supabaseAnonKey || "",
+        kakaoJavaScriptKey: config.kakaoJavaScriptKey || "",
         authRequiredForGenerate: config.authRequiredForGenerate !== false,
       }));
   }

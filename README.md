@@ -58,7 +58,8 @@ SUPABASE_ANON_KEY=your-supabase-anon-key
 2. `supabase.schema.sql` 내용을 SQL Editor에서 실행합니다.
 3. Authentication Providers에서 Google과 Kakao를 활성화합니다.
 4. Naver는 Supabase 기본 제공 Provider 목록에 없으므로 Custom OAuth/OIDC Provider로 `custom:naver`를 만들어 연결합니다.
-5. Vercel 환경 변수에도 `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 추가합니다.
+5. 카카오톡 공유 버튼을 공식 공유 화면으로 열려면 Kakao Developers의 JavaScript 키를 `KAKAO_JAVASCRIPT_KEY`에 넣고, 배포 도메인을 JavaScript SDK 도메인/제품 링크 웹 도메인에 등록합니다.
+6. Vercel 환경 변수에도 `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `KAKAO_JAVASCRIPT_KEY`를 추가합니다.
 
 실행:
 

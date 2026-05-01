@@ -397,6 +397,7 @@ const server = http.createServer(async (req, res) => {
       ok: true,
       supabaseUrl: process.env.SUPABASE_URL || "",
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+      kakaoJavaScriptKey: process.env.KAKAO_JAVASCRIPT_KEY || "",
       authRequiredForGenerate: !ALLOW_UNAUTHENTICATED_GENERATE,
     });
     return;

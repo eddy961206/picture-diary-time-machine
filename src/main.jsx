@@ -11,6 +11,7 @@ import {
   normalizeInviteCode,
 } from "./lib/share-utils.js";
 import { getSupabaseClient, getSupabaseConfig } from "./lib/supabase-client.js";
+import { shareKakaoInvite } from "./lib/kakao-share.js";
 import {
   getSeoulDateKey,
   getStreakReward,
@@ -201,6 +202,7 @@ function App() {
   const [page, setPage] = useState(initialInviteCodeRef.current ? "share" : "make");
   const [supabase, setSupabase] = useState(null);
   const [authConfigured, setAuthConfigured] = useState(false);
+  const [kakaoJavaScriptKey, setKakaoJavaScriptKey] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const [diaryBooks, setDiaryBooks] = useState([]);
   const [currentBookId, setCurrentBookId] = useState("");
@@ -256,6 +258,12 @@ function App() {
     writeRitualState(next);
     setRitualState({ ...next });
     return next;
+  }
+
+  async function nativeShare({ title, text, url }) {
+    if (!navigator.share) return false;
+    await navigator.share({ title, text, url });
+    return true;
   }
 
   function buildRequestData() {
@@ -697,6 +705,27 @@ function App() {
         return;
       }
 
+      if (target === "kakao") {
+        if (kakaoJavaScriptKey) {
+          await shareKakaoInvite({
+            javaScriptKey: kakaoJavaScriptKey,
+            title: book.name,
+            text: shortText,
+            url: inviteUrl,
+          });
+          return;
+        }
+        if (await nativeShare({ title: `${book.name} 그림일기장`, text, url: inviteUrl })) return;
+        await copyInvite();
+        return;
+      }
+
+      if (target === "instagram") {
+        if (await nativeShare({ title: `${book.name} 그림일기장`, text, url: inviteUrl })) return;
+        await copyInvite();
+        return;
+      }
+
       openAppUrlWithFallback(
         buildAppShareUrl(target, { text: shortText, url: inviteUrl }),
         copyInvite,
@@ -713,6 +742,7 @@ function App() {
     (async () => {
       const config = await getSupabaseConfig();
       setAuthConfigured(config.configured);
+      setKakaoJavaScriptKey(config.kakaoJavaScriptKey || "");
       if (!config.configured) {
         setDiaryEntries([]);
         return;
