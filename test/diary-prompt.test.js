@@ -15,7 +15,9 @@ test("buildDiaryPrompt accepts one tiny diary line", () => {
 
   assert.match(prompt, /퇴근하고 편의점 라면 먹음/);
   assert.match(prompt, /라면을 먹었다/);
-  assert.match(prompt, /Korean elementary school 2nd grade boy/);
+  assert.match(prompt, /Korean elementary school 2nd grade child/);
+  assert.match(prompt, /Do not imply a fixed gender/);
+  assert.doesNotMatch(prompt, /남자아이|boy/);
   assert.match(prompt, /Do not create beautiful anime/);
   assert.doesNotMatch(prompt, /Date field: 오늘/);
   assert.match(prompt, /Never write “오늘” in the date field/);

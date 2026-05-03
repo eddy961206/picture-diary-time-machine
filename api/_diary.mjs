@@ -117,7 +117,7 @@ export function buildDiaryPrompt(input) {
   const moodGuide = {
     funny: "성인의 현실을 초등학생처럼 단순하게 적어서 살짝 웃기지만 따뜻하게. 과한 밈이나 조롱은 금지.",
     soft: "별일 아닌 하루도 조금 애틋하고 소중하게. 슬프게 과장하지 말고 조용히 다정하게.",
-    kid: "정말 초등학교 2학년 남자아이가 쓴 것처럼 단순하고 솔직하게. 관찰 위주로.",
+    kid: "정말 초등학교 2학년 어린이가 쓴 것처럼 단순하고 솔직하게. 관찰 위주로.",
   }[moodType] || "초등학생 그림일기처럼 짧고 단순하고 따뜻하게.";
 
   return `
@@ -126,7 +126,7 @@ Create one realistic photographed Korean elementary-school picture diary homewor
 Core concept:
 - This is not an AI art tool result. It is a quiet daily ritual artifact.
 - Turn an ordinary adult day into a 2010-2013 Korean elementary-school vacation homework picture diary.
-- Student persona: a Korean elementary school 2nd grade boy.
+- Student persona: a Korean elementary school 2nd grade child. Do not imply a fixed gender.
 - Page type: Korean “그림일기” worksheet with printed boxes for 날짜, 날씨, 제목, 그림, and 일기 lines.
 - Date field: write exactly “${date}”.
 - Weather field: ${weather ? `write exactly “${weather}”.` : "infer one short Korean weather word from the note if possible; otherwise write “맑음”."}

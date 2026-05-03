@@ -229,6 +229,7 @@ function App() {
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [statusModal, setStatusModal] = useState(null);
   const [saveLoginOpen, setSaveLoginOpen] = useState(false);
+  const [viewerEntryId, setViewerEntryId] = useState("");
   const [bookName, setBookName] = useState("");
   const [inviteCode, setInviteCode] = useState(initialInviteCodeRef.current);
   const restoringPendingSave = useRef(false);
@@ -244,6 +245,11 @@ function App() {
   const hasGeneratedDataUrl = currentImageUrl.startsWith("data:");
   const loadingMessage = GENERATION_LOADING_LINES[loadingIndex % GENERATION_LOADING_LINES.length];
   const shareText = `${SHARE_LINES[ritualState.generations % SHARE_LINES.length]} ${getSharePageUrl()}`;
+  const viewerEntryIndex = useMemo(
+    () => diaryEntries.findIndex((entry) => entry.id === viewerEntryId),
+    [diaryEntries, viewerEntryId],
+  );
+  const viewerEntry = viewerEntryIndex >= 0 ? diaryEntries[viewerEntryIndex] : null;
 
   function updateForm(name, value) {
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -898,12 +904,7 @@ function App() {
               books={diaryBooks}
               currentBookId={currentBookId}
               setCurrentBookId={setCurrentBookId}
-              onOpenEntry={(entry) => {
-                setCurrentImage(entry.image_url, entry.image_format || "png");
-                pushLog(`${entry.diary_date || "이전"} 일기를 펼쳤어요.`);
-                setPage("make");
-              }}
-              onRefresh={() => loadDiaryEntries()}
+              onOpenEntry={(entry) => setViewerEntryId(entry.id)}
               onStartAuth={startAuth}
             />
           ) : null}
@@ -940,6 +941,20 @@ function App() {
           description="계정에 붙이면 나중에 다시 볼 수 있어요."
           onClose={() => setSaveLoginOpen(false)}
           onStartAuth={(provider) => startAuth(provider, { saveAfterLogin: true })}
+        />
+      ) : null}
+
+      {viewerEntry ? (
+        <DiaryEntryViewer
+          entry={viewerEntry}
+          entries={diaryEntries}
+          entryIndex={viewerEntryIndex}
+          showAuthor={Boolean(currentBookId)}
+          onClose={() => setViewerEntryId("")}
+          onMove={(offset) => {
+            const nextIndex = (viewerEntryIndex + offset + diaryEntries.length) % diaryEntries.length;
+            setViewerEntryId(diaryEntries[nextIndex]?.id || "");
+          }}
         />
       ) : null}
 
@@ -1252,7 +1267,7 @@ function ResultPanel({
   );
 }
 
-function BookPage({ currentUser, authConfigured, entries, books, currentBookId, setCurrentBookId, onOpenEntry, onRefresh, onStartAuth }) {
+function BookPage({ currentUser, authConfigured, entries, books, currentBookId, setCurrentBookId, onOpenEntry, onStartAuth }) {
   const showAuthor = Boolean(currentBookId);
 
   return (
@@ -1286,8 +1301,53 @@ function BookPage({ currentUser, authConfigured, entries, books, currentBookId, 
       ) : (
         <div className="empty-state">아직 모은 일기가 없어.</div>
       )}
-      <button type="button" className="btn btn--ghost mini" onClick={onRefresh}>일기장 들춰보기</button>
     </section>
+  );
+}
+
+function DiaryEntryViewer({ entry, entries, entryIndex, showAuthor, onClose, onMove }) {
+  const canMove = entries.length > 1;
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+      if (event.key === "ArrowLeft" && canMove) onMove(-1);
+      if (event.key === "ArrowRight" && canMove) onMove(1);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canMove, onClose, onMove]);
+
+  return (
+    <div className="entry-viewer" role="dialog" aria-modal="true" aria-labelledby="entryViewerTitle" onClick={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <div className="entry-viewer__panel">
+        <header className="entry-viewer__header">
+          <div>
+            <p>{showAuthor && entry.author_name ? `${entry.author_name} · ${entry.diary_date || "날짜 없음"}` : entry.diary_date || "날짜 없음"}</p>
+            <h2 id="entryViewerTitle">{entry.title || "오늘의 일기"}</h2>
+          </div>
+          <button type="button" className="entry-viewer__close" onClick={onClose} aria-label="닫기">×</button>
+        </header>
+
+        <div className="entry-viewer__stage">
+          {canMove ? (
+            <button type="button" className="entry-viewer__nav prev" onClick={() => onMove(-1)} aria-label="이전 일기">‹</button>
+          ) : null}
+          <img src={entry.image_url} alt={entry.title || "그림일기"} />
+          {canMove ? (
+            <button type="button" className="entry-viewer__nav next" onClick={() => onMove(1)} aria-label="다음 일기">›</button>
+          ) : null}
+        </div>
+
+        <footer className="entry-viewer__footer">
+          <span>{entryIndex + 1} / {entries.length}</span>
+          {showAuthor && entry.author_name ? <strong>{entry.author_name} 작성</strong> : null}
+        </footer>
+      </div>
+    </div>
   );
 }
 
